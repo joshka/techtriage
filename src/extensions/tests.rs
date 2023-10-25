@@ -4,6 +4,7 @@ use super::conflicts::{LoadConflict, StageConflict, VersionChange};
 use super::{ExtensionID, ExtensionManager as Manager, InventoryExtension as Extension, Metadata};
 use crate::database::Database;
 use crate::models::common::{Device, DeviceClassification, DeviceManufacturer, UniqueID};
+use crate::Context;
 
 #[tokio::test]
 /// Tests that an extension which does not already exist in the database will be loaded without
@@ -13,11 +14,13 @@ async fn load_new_extension() {
 
     // Create a basic extension
     let extension = Extension::test_single(1, 1);
-    let load_override = false;
+
+    // Disable auto-reloading and auto-handling
+    let ctx = Context::no_override();
 
     // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure there were no conflicts
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
@@ -35,19 +38,21 @@ async fn compatible_duplicate_extensions() {
 
     // Create two extensions with the same metadata, but different contents
     let (original_extension, duplicate_extension) = Extension::test_pair();
-    let load_override = false;
+
+    // Disable auto-reloading and enable auto-handling
+    let ctx = Context::auto_handle();
 
     // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure there were no conflicts
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
     // Make sure the extension was loaded correctly
     db.only_contains(&original_extension).await;
     // Load the second extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([duplicate_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [duplicate_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 1);
@@ -69,19 +74,21 @@ async fn reload_extension_update() {
     // Create two extensions with the same ID, but different versions
     let (original_extension, mut updated_extension) = Extension::test_pair();
     updated_extension.metadata.version = Version::new(1, 0, 1);
-    let load_override = false;
+
+    // Disable auto-reloading and enable auto-handling
+    let ctx = Context::auto_handle();
 
     // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure there were no conflicts
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
     // Make sure the extension was loaded correctly
     db.only_contains(&original_extension).await;
     // Reload the extension with the updated version, which should unload the original extension
-    let (manager, stage_conflicts) = Manager::with_extensions([updated_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [updated_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 1);
@@ -107,19 +114,21 @@ async fn skip_extension_downgrade() {
     // Create two extensions with the same ID, but different versions
     let (mut original_extension, downgraded_extension) = Extension::test_pair();
     original_extension.metadata.version = Version::new(1, 0, 1);
-    let load_override = false;
+
+    // Disable auto-reloading and enable auto-handling
+    let ctx = Context::auto_handle();
 
     // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure there were no conflicts
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
     // Make sure the extension was loaded correctly
     db.only_contains(&original_extension).await;
     // Attempt to load the older version of the extension, which should leave the original intact
-    let (manager, stage_conflicts) = Manager::with_extensions([downgraded_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [downgraded_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 1);
@@ -144,19 +153,21 @@ async fn reload_extension_override() {
 
     // Create two extensions with the same metadata, but with developer mode enabled
     let (original_extension, reloaded_extension) = Extension::test_pair();
-    let load_override = true;
+
+    // Enable auto-reloading and disable auto-handling
+    let ctx = Context::auto_reload();
 
     // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions([original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure there were no conflicts
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
     // Make sure the extension was loaded correctly
     db.only_contains(&original_extension).await;
     // Reload the extension, which should unload the original extension
-    let (manager, stage_conflicts) = Manager::with_extensions([reloaded_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db, load_override).await.unwrap();
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [reloaded_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 1);
@@ -251,9 +262,10 @@ impl Extension {
 impl Manager {
     /// Creates a manager for the provided extensions.
     fn with_extensions(
+        ctx: &Context,
         extensions: impl IntoIterator<Item = Extension>,
     ) -> (Self, Vec<StageConflict>) {
-        let mut manager = Self::default();
+        let mut manager = Self::base_with_context(ctx);
         let mut conflicts = Vec::new();
         for extension in extensions {
             // $ This cannot be an unwrap if it is to be tested

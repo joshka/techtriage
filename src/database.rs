@@ -1,6 +1,7 @@
 use std::future::IntoFuture;
 use std::net::{Ipv4Addr, SocketAddr};
 
+use anyhow::anyhow;
 use futures_util::future;
 use log::{debug, error, info, warn};
 use surrealdb::engine::remote::ws::{Client, Ws};
@@ -19,7 +20,6 @@ use crate::models::database::{
 };
 use crate::stop;
 
-// TODO: Find a more sensible place to move these
 pub const EXTENSION_TABLE_NAME: &str = "extensions";
 pub const DEVICE_MANUFACTURER_TABLE_NAME: &str = "device_manufacturers";
 pub const DEVICE_CLASSIFICATION_TABLE_NAME: &str = "device_classifications";
@@ -61,7 +61,6 @@ impl Database {
 
     /// Connects to the database using defaults except for the provided database name.
     #[cfg(test)]
-    #[allow(dead_code)]
     pub async fn connect_with_name(database: &str) -> Self {
         Self::connect_with_config(DatabaseConfig {
             database: database.to_owned(),
@@ -72,8 +71,9 @@ impl Database {
 
     /// Connects to the database using the provided configuration.
     pub async fn connect_with_config(config: DatabaseConfig) -> Self {
+        info!("Connecting and authenticating to database...");
         debug!(
-            "Connecting to database [NS: '{}', DB: '{}'] at {}",
+            "Using namespace '{}' and database '{}' at address {}.",
             config.namespace, config.database, config.address
         );
 
@@ -101,6 +101,8 @@ impl Database {
                 error!("Failed to sign into SurrealDB instance. Please check your credentials.");
                 stop(3);
             });
+
+        info!("Database connection established.");
 
         Self { connection, config }
     }
@@ -169,29 +171,6 @@ impl Database {
         }
     }
 
-    /// Deletes all items from the database, but leaves the schema intact.
-    /// Used for testing purposes.
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub async fn clear(&self) {
-        self.connection
-            .delete::<Vec<GenericPullRecord>>(EXTENSION_TABLE_NAME)
-            .await
-            .unwrap();
-        self.connection
-            .delete::<Vec<GenericPullRecord>>(DEVICE_MANUFACTURER_TABLE_NAME)
-            .await
-            .unwrap();
-        self.connection
-            .delete::<Vec<GenericPullRecord>>(DEVICE_CLASSIFICATION_TABLE_NAME)
-            .await
-            .unwrap();
-        self.connection
-            .delete::<Vec<GenericPullRecord>>(DEVICE_TABLE_NAME)
-            .await
-            .unwrap();
-    }
-
     /// Deletes the current database and all of its contents.
     /// Used by tests so the database instance can be reused.
     #[cfg(test)]
@@ -243,7 +222,7 @@ impl Database {
         extension_id: &InventoryExtensionUniqueID,
     ) -> anyhow::Result<()> {
         if extension_id.unnamespaced() == "builtin" {
-            return Err(anyhow::anyhow!("Cannot unload built-in extension"));
+            return Err(anyhow!("Cannot unload built-in extension"));
         }
 
         self.connection
@@ -397,7 +376,6 @@ impl Database {
     /// Checks that the database only contains the given extension and its contents.
     /// Used for testing purposes.
     #[cfg(test)]
-    #[allow(dead_code)]
     pub async fn only_contains(&self, extension: &InventoryExtension) {
         let loaded_extensions = self.list_extensions().await.unwrap();
         let loaded_device_manufacturers = self.list_device_manufacturers().await.unwrap();

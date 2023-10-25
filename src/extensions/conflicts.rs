@@ -1,4 +1,4 @@
-use log::warn;
+use log::{error, warn};
 use semver::Version;
 
 use super::{ExtensionID, InventoryExtension as Extension, Metadata};
@@ -48,7 +48,7 @@ impl LoadConflict {
     // * - Conflicts can only arise when a staged and a loaded extension share the same ID.
     // * - No two loaded extensions can have the same ID due to database constraints.
     // * - No two staged extensions can have the same ID because they are pre-filtered.
-    pub fn new(
+    pub(super) fn new(
         staged_extension: &Extension,
         loaded_extensions: &mut Vec<Metadata>,
     ) -> Option<Self> {
@@ -92,46 +92,50 @@ impl LoadConflict {
     }
 
     /// Logs the appropriate message for a conflict.
-    pub fn log(&self, load_override: bool) {
+    pub(super) fn log(&self, auto_handle: bool) {
         let id_string = self.id.unnamespaced();
 
         if let Some(name_change) = &self.name_change {
             warn!(
                 "Loaded and staged extension with ID '{}' have conflicting common names '{}' and \
                 '{}'.",
-                &id_string, &name_change.loaded_name, &name_change.staged_name
+                id_string, &name_change.loaded_name, &name_change.staged_name
             );
         }
 
-        if load_override {
-            warn!(
-                "Reloading extension '{}' due to a load override.",
-                &id_string
-            );
-        } else if let Some(version_change) = &self.version_change {
+        if let Some(version_change) = &self.version_change {
+            if !auto_handle {
+                error!(
+                    "Skipping extension '{}' v{} because a different version v{} is already \
+                    loaded.",
+                    id_string, version_change.staged_version, version_change.loaded_version
+                );
+                return;
+            }
+
             if version_change.loaded_version < version_change.staged_version {
                 warn!(
                     "Updating extension '{}' from v{} to v{}.",
-                    &id_string, version_change.loaded_version, version_change.staged_version
+                    id_string, version_change.loaded_version, version_change.staged_version
                 );
             } else {
                 warn!(
-                    "Skipping extension '{}' because a newer version is already loaded.",
-                    &id_string
+                    "Skipping extension '{}' v{} because a newer version v{} is already loaded.",
+                    id_string, version_change.staged_version, version_change.loaded_version
                 );
             }
         } else {
             warn!(
                 "Skipping extension '{}' because it is already loaded and its version has not been \
                 changed.",
-                &id_string
+                id_string
             );
         }
     }
 
     /// Checks whether the conflict indicates that the extension should be reloaded or skipped.
-    /// Load override flag should be checked before calling this method.
-    pub fn should_reload(&self) -> bool {
+    /// Load and handle override flags should be checked before calling this method.
+    pub(super) fn should_reload(&self) -> bool {
         if let Some(version_change) = &self.version_change {
             version_change.loaded_version < version_change.staged_version
         } else {
