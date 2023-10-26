@@ -1,7 +1,7 @@
 use log::{error, warn};
 use semver::Version;
 
-use super::{ExtensionID, InventoryExtension as Extension, Metadata};
+use super::{Extension, ExtensionID, Metadata};
 use crate::models::common::UniqueID;
 
 /// Indicator that the manager encountered an error when staging an extension.

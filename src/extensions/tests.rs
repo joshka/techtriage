@@ -1,7 +1,7 @@
 use semver::Version;
 
 use super::conflicts::{LoadConflict, StageConflict, VersionChange};
-use super::{ExtensionID, ExtensionManager as Manager, InventoryExtension as Extension, Metadata};
+use super::{Extension, ExtensionID, ExtensionManager as Manager, Metadata};
 use crate::database::Database;
 use crate::models::common::{Device, DeviceClassification, DeviceManufacturer, UniqueID};
 use crate::Context;

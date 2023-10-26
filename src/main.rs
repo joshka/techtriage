@@ -11,7 +11,7 @@ use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode, Writ
 use database::Database;
 use extensions::ExtensionManager;
 
-struct Context {
+pub struct Context {
     override_mode: Option<Override>,
 }
 
