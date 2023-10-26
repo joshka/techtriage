@@ -15,7 +15,7 @@ use semver::Version;
 #[derive(Debug, Clone, PartialEq)]
 pub struct InventoryExtensionMetadata {
     pub id: InventoryExtensionUniqueID,
-    pub common_name: String,
+    pub display_name: String,
     pub version: Version,
 }
 
@@ -23,7 +23,7 @@ pub struct InventoryExtensionMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceManufacturer {
     pub id: DeviceManufacturerUniqueID,
-    pub common_name: String,
+    pub display_name: String,
     pub extensions: HashSet<InventoryExtensionUniqueID>,
 }
 
@@ -31,7 +31,7 @@ pub struct DeviceManufacturer {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeviceClassification {
     pub id: DeviceClassificationUniqueID,
-    pub common_name: String,
+    pub display_name: String,
     pub extensions: HashSet<InventoryExtensionUniqueID>,
 }
 
@@ -39,7 +39,7 @@ pub struct DeviceClassification {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Device {
     pub internal_id: String,
-    pub common_name: String,
+    pub display_name: String,
     pub manufacturer: DeviceManufacturerUniqueID,
     pub classification: DeviceClassificationUniqueID,
     pub extension: InventoryExtensionUniqueID,

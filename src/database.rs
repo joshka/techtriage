@@ -117,20 +117,20 @@ impl Database {
             .query(&format!(
                 "
                 DEFINE TABLE {EXTENSION_TABLE_NAME} SCHEMAFUL;
-                DEFINE FIELD common_name ON TABLE {EXTENSION_TABLE_NAME} TYPE string;
+                DEFINE FIELD display_name ON TABLE {EXTENSION_TABLE_NAME} TYPE string;
                 DEFINE FIELD version ON TABLE {EXTENSION_TABLE_NAME} TYPE string;
 
                 DEFINE TABLE {DEVICE_MANUFACTURER_TABLE_NAME} SCHEMAFUL;
-                DEFINE FIELD common_name ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE string;
+                DEFINE FIELD display_name ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE string;
                 DEFINE FIELD extensions ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
 
                 DEFINE TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} SCHEMAFUL;
-                DEFINE FIELD common_name ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE string;
+                DEFINE FIELD display_name ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE string;
                 DEFINE FIELD extensions ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
 
                 DEFINE TABLE {DEVICE_TABLE_NAME} SCHEMAFUL;
                 DEFINE FIELD internal_id ON TABLE {DEVICE_TABLE_NAME} TYPE string;
-                DEFINE FIELD common_name ON TABLE {DEVICE_TABLE_NAME} TYPE string;
+                DEFINE FIELD display_name ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD manufacturer ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_MANUFACTURER_TABLE_NAME});
                 DEFINE FIELD classification ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_CLASSIFICATION_TABLE_NAME});
                 DEFINE FIELD extension ON TABLE {DEVICE_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});

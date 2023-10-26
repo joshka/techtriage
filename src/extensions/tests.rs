@@ -219,7 +219,7 @@ impl Extension {
         Self {
             metadata: Metadata {
                 id: ExtensionID::new(format!("test_{num}")),
-                common_name: format!("Test Extension {num}"),
+                display_name: format!("Test Extension {num}"),
                 version: Version::new(1, 0, 0),
             },
             device_manufacturers: Vec::new(),

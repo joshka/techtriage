@@ -18,7 +18,7 @@ impl StageConflict {
     }
 }
 
-/// Indicator that the common name of a staged extension did not match its loaded counterpart.
+/// Indicator that the display name of a staged extension did not match its loaded counterpart.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct NameChange {
     pub(super) loaded_name: String,
@@ -67,8 +67,8 @@ impl LoadConflict {
                 id: loaded_extension_metadata.id.clone(),
                 name_change: if diff.is_name_change() {
                     Some(NameChange {
-                        loaded_name: loaded_extension_metadata.common_name.clone(),
-                        staged_name: staged_extension_metadata.common_name.clone(),
+                        loaded_name: loaded_extension_metadata.display_name.clone(),
+                        staged_name: staged_extension_metadata.display_name.clone(),
                     })
                 } else {
                     None
@@ -97,7 +97,7 @@ impl LoadConflict {
 
         if let Some(name_change) = &self.name_change {
             warn!(
-                "Loaded and staged extension with ID '{}' have conflicting common names '{}' and \
+                "Loaded and staged extension with ID '{}' have conflicting display names '{}' and \
                 '{}'.",
                 id_string, &name_change.loaded_name, &name_change.staged_name
             );
@@ -147,7 +147,7 @@ impl LoadConflict {
 /// The difference between the metadata of two extensions, used to determine conflicts.
 /// Does not account for extension contents.
 struct ExtensionDiff {
-    same_common_name: bool,
+    same_display_name: bool,
     higher_version: Option<bool>,
 }
 
@@ -169,23 +169,23 @@ impl ExtensionDiff {
         };
 
         Some(Self {
-            same_common_name: extension_1.common_name == extension_2.common_name,
+            same_display_name: extension_1.display_name == extension_2.display_name,
             higher_version,
         })
     }
 
     /// Checks whether the loaded extension is being updated by the staged extension.
     fn is_update(&self) -> bool {
-        self.same_common_name && self.higher_version == Some(true)
+        self.same_display_name && self.higher_version == Some(true)
     }
 
     /// Checks whether the loaded extension is being downgraded by the staged extension.
     fn is_downgrade(&self) -> bool {
-        self.same_common_name && self.higher_version == Some(false)
+        self.same_display_name && self.higher_version == Some(false)
     }
 
     /// Checks whether the diff indicates that the extension name is being changed.
     fn is_name_change(&self) -> bool {
-        !self.same_common_name
+        !self.same_display_name
     }
 }

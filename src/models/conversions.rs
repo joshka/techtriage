@@ -21,7 +21,7 @@ impl<'a> From<&'a InventoryExtensionMetadata> for InventoryExtensionMetadataPush
     fn from(extension: &'a InventoryExtensionMetadata) -> Self {
         InventoryExtensionMetadataPushRecord {
             id: Thing::from(&extension.id),
-            common_name: &extension.common_name,
+            display_name: &extension.display_name,
             version: extension.version.to_string(),
         }
     }
@@ -32,7 +32,7 @@ impl TryFrom<InventoryExtensionMetadataPullRecord> for InventoryExtensionMetadat
     fn try_from(extension: InventoryExtensionMetadataPullRecord) -> Result<Self, anyhow::Error> {
         Ok(InventoryExtensionMetadata {
             id: InventoryExtensionUniqueID::try_from(extension.id)?,
-            common_name: extension.common_name,
+            display_name: extension.display_name,
             version: Version::parse(&extension.version)?,
         })
     }
@@ -42,7 +42,7 @@ impl<'a> From<&'a DeviceManufacturer> for DeviceManufacturerPushRecord<'a> {
     fn from(manufacturer: &'a DeviceManufacturer) -> Self {
         DeviceManufacturerPushRecord {
             id: Thing::from(&manufacturer.id),
-            common_name: &manufacturer.common_name,
+            display_name: &manufacturer.display_name,
             extensions: manufacturer.extensions.iter().map(Thing::from).collect(),
         }
     }
@@ -53,7 +53,7 @@ impl TryFrom<DeviceManufacturerPullRecord> for DeviceManufacturer {
     fn try_from(manufacturer: DeviceManufacturerPullRecord) -> Result<Self, anyhow::Error> {
         Ok(DeviceManufacturer {
             id: DeviceManufacturerUniqueID::try_from(manufacturer.id)?,
-            common_name: manufacturer.common_name,
+            display_name: manufacturer.display_name,
             extensions: manufacturer
                 .extensions
                 .into_iter()
@@ -67,7 +67,7 @@ impl<'a> From<&'a DeviceClassification> for DeviceClassificationPushRecord<'a> {
     fn from(classification: &'a DeviceClassification) -> Self {
         DeviceClassificationPushRecord {
             id: Thing::from(&classification.id),
-            common_name: &classification.common_name,
+            display_name: &classification.display_name,
             extensions: classification.extensions.iter().map(Thing::from).collect(),
         }
     }
@@ -78,7 +78,7 @@ impl TryFrom<DeviceClassificationPullRecord> for DeviceClassification {
     fn try_from(classification: DeviceClassificationPullRecord) -> Result<Self, anyhow::Error> {
         Ok(DeviceClassification {
             id: DeviceClassificationUniqueID::try_from(classification.id)?,
-            common_name: classification.common_name,
+            display_name: classification.display_name,
             extensions: classification
                 .extensions
                 .into_iter()
@@ -92,7 +92,7 @@ impl<'a> From<&'a Device> for DevicePushRecord<'a> {
     fn from(device: &'a Device) -> Self {
         DevicePushRecord {
             internal_id: &device.internal_id,
-            common_name: &device.common_name,
+            display_name: &device.display_name,
             manufacturer: Thing::from(&device.manufacturer),
             classification: Thing::from(&device.classification),
             extension: Thing::from(&device.extension),
@@ -107,7 +107,7 @@ impl TryFrom<DevicePullRecord> for Device {
     fn try_from(device: DevicePullRecord) -> Result<Self, Self::Error> {
         Ok(Device {
             internal_id: device.internal_id,
-            common_name: device.common_name,
+            display_name: device.display_name,
             manufacturer: DeviceManufacturerUniqueID::try_from(device.manufacturer)?,
             classification: DeviceClassificationUniqueID::try_from(device.classification)?,
             extension: InventoryExtensionUniqueID::try_from(device.extension)?,

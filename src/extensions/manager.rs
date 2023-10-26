@@ -32,7 +32,7 @@ pub struct InventoryExtension {
 #[derive(Debug, Deserialize)]
 struct InventoryExtensionToml {
     extension_id: String,
-    extension_common_name: String,
+    extension_display_name: String,
     extension_version: String,
     device_manufacturers: Option<Vec<DeviceManufacturerToml>>,
     device_classifications: Option<Vec<DeviceClassificationToml>>,
@@ -44,7 +44,7 @@ struct InventoryExtensionToml {
 #[derive(Debug, Deserialize)]
 struct DeviceManufacturerToml {
     id: String,
-    common_name: String,
+    display_name: String,
 }
 
 /// A classification of device as read from a TOML extension.
@@ -52,7 +52,7 @@ struct DeviceManufacturerToml {
 #[derive(Debug, Deserialize)]
 struct DeviceClassificationToml {
     id: String,
-    common_name: String,
+    display_name: String,
 }
 
 /// A device and its metadata as read from a TOML extension.
@@ -60,7 +60,7 @@ struct DeviceClassificationToml {
 #[derive(Debug, Deserialize)]
 struct DeviceToml {
     internal_id: String,
-    common_name: String,
+    display_name: String,
     manufacturer: String,
     classification: String,
     primary_model_identifiers: Vec<String>,
@@ -246,44 +246,44 @@ impl InventoryExtension {
 
         let metadata = Metadata {
             id: ExtensionID::new("builtin"),
-            common_name: "Built-in".to_owned(),
+            display_name: "Built-in".to_owned(),
             version: Version::new(0, 0, 0),
         };
 
         let device_manufacturers = vec![
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("apple"),
-                common_name: "Apple".to_owned(),
+                display_name: "Apple".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("samsung"),
-                common_name: "Samsung".to_owned(),
+                display_name: "Samsung".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("google"),
-                common_name: "Google".to_owned(),
+                display_name: "Google".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("motorola"),
-                common_name: "Motorola".to_owned(),
+                display_name: "Motorola".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("dell"),
-                common_name: "Dell".to_owned(),
+                display_name: "Dell".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("hp"),
-                common_name: "HP".to_owned(),
+                display_name: "HP".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new("lenovo"),
-                common_name: "Lenovo".to_owned(),
+                display_name: "Lenovo".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
         ];
@@ -291,27 +291,27 @@ impl InventoryExtension {
         let device_classifications = vec![
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("phone"),
-                common_name: "Phone".to_owned(),
+                display_name: "Phone".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("tablet"),
-                common_name: "Tablet".to_owned(),
+                display_name: "Tablet".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("console"),
-                common_name: "console".to_owned(),
+                display_name: "console".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("laptop"),
-                common_name: "Laptop".to_owned(),
+                display_name: "Laptop".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("desktop"),
-                common_name: "Desktop".to_owned(),
+                display_name: "Desktop".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
         ];
@@ -337,7 +337,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
             .into_iter()
             .map(|m| DeviceManufacturer {
                 id: DeviceManufacturerUniqueID::new(&m.id),
-                common_name: m.common_name,
+                display_name: m.display_name,
                 extensions: HashSet::from([ExtensionID::new(&toml.extension_id)]),
             })
             .collect();
@@ -348,7 +348,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
             .into_iter()
             .map(|c| DeviceClassification {
                 id: DeviceClassificationUniqueID::new(&c.id),
-                common_name: c.common_name,
+                display_name: c.display_name,
                 extensions: HashSet::from([ExtensionID::new(&toml.extension_id)]),
             })
             .collect();
@@ -359,7 +359,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
             // ? Is there a more conventional way to do this conversion?
             .map(|d| Device {
                 internal_id: d.internal_id,
-                common_name: d.common_name,
+                display_name: d.display_name,
                 manufacturer: DeviceManufacturerUniqueID::new(&d.manufacturer),
                 classification: DeviceClassificationUniqueID::new(&d.classification),
                 extension: ExtensionID::new(&toml.extension_id),
@@ -371,7 +371,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
         InventoryExtension {
             metadata: Metadata {
                 id: ExtensionID::new(&toml.extension_id),
-                common_name: toml.extension_common_name,
+                display_name: toml.extension_display_name,
                 version: Version::from_str(&toml.extension_version).unwrap(),
             },
             device_manufacturers,

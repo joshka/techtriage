@@ -5,7 +5,7 @@ use surrealdb::sql::Thing;
 #[derive(Debug, Serialize)]
 pub struct InventoryExtensionMetadataPushRecord<'a> {
     pub id: Thing,
-    pub common_name: &'a str,
+    pub display_name: &'a str,
     pub version: String,
 }
 
@@ -13,7 +13,7 @@ pub struct InventoryExtensionMetadataPushRecord<'a> {
 #[derive(Debug, Deserialize)]
 pub struct InventoryExtensionMetadataPullRecord {
     pub id: Thing,
-    pub common_name: String,
+    pub display_name: String,
     pub version: String,
 }
 
@@ -21,7 +21,7 @@ pub struct InventoryExtensionMetadataPullRecord {
 #[derive(Debug, Serialize)]
 pub struct DeviceManufacturerPushRecord<'a> {
     pub id: Thing,
-    pub common_name: &'a str,
+    pub display_name: &'a str,
     pub extensions: Vec<Thing>,
 }
 
@@ -29,7 +29,7 @@ pub struct DeviceManufacturerPushRecord<'a> {
 #[derive(Debug, Deserialize)]
 pub struct DeviceManufacturerPullRecord {
     pub id: Thing,
-    pub common_name: String,
+    pub display_name: String,
     pub extensions: Vec<Thing>,
 }
 
@@ -37,7 +37,7 @@ pub struct DeviceManufacturerPullRecord {
 #[derive(Debug, Serialize)]
 pub struct DeviceClassificationPushRecord<'a> {
     pub id: Thing,
-    pub common_name: &'a str,
+    pub display_name: &'a str,
     pub extensions: Vec<Thing>,
 }
 
@@ -45,7 +45,7 @@ pub struct DeviceClassificationPushRecord<'a> {
 #[derive(Debug, Deserialize)]
 pub struct DeviceClassificationPullRecord {
     pub id: Thing,
-    pub common_name: String,
+    pub display_name: String,
     pub extensions: Vec<Thing>,
 }
 
@@ -53,7 +53,7 @@ pub struct DeviceClassificationPullRecord {
 #[derive(Debug, Serialize)]
 pub struct DevicePushRecord<'a> {
     pub internal_id: &'a str,
-    pub common_name: &'a str,
+    pub display_name: &'a str,
     pub manufacturer: Thing,
     pub classification: Thing,
     pub extension: Thing,
@@ -65,7 +65,7 @@ pub struct DevicePushRecord<'a> {
 #[derive(Debug, Deserialize)]
 pub struct DevicePullRecord {
     pub internal_id: String,
-    pub common_name: String,
+    pub display_name: String,
     pub manufacturer: Thing,
     pub classification: Thing,
     pub extension: Thing,

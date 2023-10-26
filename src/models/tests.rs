@@ -11,7 +11,7 @@ impl DeviceManufacturer {
     pub fn test(num: u32, extension_id: &InventoryExtensionUniqueID) -> Self {
         Self {
             id: DeviceManufacturerUniqueID::new(format!("test_{num}")),
-            common_name: format!("Test Device Manufacturer {num}"),
+            display_name: format!("Test Device Manufacturer {num}"),
             extensions: HashSet::from([extension_id.clone()]),
         }
     }
@@ -23,7 +23,7 @@ impl DeviceClassification {
     pub fn test(num: u32, extension_id: &InventoryExtensionUniqueID) -> Self {
         Self {
             id: DeviceClassificationUniqueID::new(format!("test_{num}")),
-            common_name: format!("Test Device Classification {num}"),
+            display_name: format!("Test Device Classification {num}"),
             extensions: HashSet::from([extension_id.clone()]),
         }
     }
@@ -40,7 +40,7 @@ impl Device {
     ) -> Self {
         Self {
             internal_id: format!("test_{num}"),
-            common_name: format!("Test Device {num}"),
+            display_name: format!("Test Device {num}"),
             manufacturer: manufacturer_id.clone(),
             classification: classification_id.clone(),
             extension: extension_id.clone(),
