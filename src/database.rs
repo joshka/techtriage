@@ -1,9 +1,8 @@
 use std::future::IntoFuture;
 use std::net::{Ipv4Addr, SocketAddr};
 
-use anyhow::anyhow;
 use futures_util::future;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
@@ -151,30 +150,6 @@ impl Database {
         Ok(())
     }
 
-    /// Sets up IDs for "built-in" manufacturers and device categories.
-    pub async fn add_builtins(&self) -> anyhow::Result<()> {
-        use surrealdb::{error::Api, Error};
-        info!("Setting up reserved/built-in items...");
-        match self.load_extension(InventoryExtension::builtin()).await {
-            Ok(_) => Ok(()),
-            Err(e) => match e {
-                Error::Db(e) => Err(e.into()),
-                Error::Api(e) => match e {
-                    Api::Query(s)
-                        if s == "There was a problem with the database: Database record \
-                        `extensions:builtin` already exists" =>
-                    {
-                        warn!(
-                            "Cannot re-add built-in items because they have already been loaded."
-                        );
-                        Ok(())
-                    }
-                    _ => Err(e.into()),
-                },
-            },
-        }
-    }
-
     /// Deletes the current database and all of its contents.
     /// Used by tests so the database instance can be reused.
     #[cfg(test)]
@@ -225,10 +200,6 @@ impl Database {
         &self,
         extension_id: &InventoryExtensionUniqueID,
     ) -> anyhow::Result<()> {
-        if extension_id.unnamespaced() == "builtin" {
-            return Err(anyhow!("Cannot unload built-in extension"));
-        }
-
         self.connection
             .query(&format!(
                 "

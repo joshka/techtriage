@@ -78,7 +78,6 @@ async fn main() -> anyhow::Result<()> {
     let db = Database::connect().await;
 
     db.setup_tables().await?;
-    db.add_builtins().await?;
 
     let manager = ExtensionManager::new(&ctx)?;
     manager.load_extensions(&db).await?;

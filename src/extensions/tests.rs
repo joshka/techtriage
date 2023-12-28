@@ -232,37 +232,6 @@ async fn different_version_crash() {
     manager.load_extensions(&db).await.unwrap();
 }
 
-/// Tests that the builtin extension is loaded correctly.
-#[tokio::test]
-async fn load_builtin_extension() {
-    let db = Database::connect_with_name("load_builtin_extension").await;
-    db.setup_tables().await.unwrap();
-
-    // Add the builtin extension to the database.
-    db.add_builtins().await.unwrap();
-
-    // Make sure the builtin extension was loaded correctly.
-    db.only_contains(&Extension::builtin()).await;
-
-    db.teardown().await;
-}
-
-/// Tests that the builtin extension cannot be removed from the database.
-#[tokio::test]
-async fn unload_builtin_extension() {
-    let db = Database::connect_with_name("unload_builtin_extension").await;
-    db.setup_tables().await.unwrap();
-    db.add_builtins().await.unwrap();
-
-    // TODO: Match on error variant once custom errors are added
-    assert!(db
-        .unload_extension(&ExtensionID::new("builtin"))
-        .await
-        .is_err());
-
-    db.teardown().await;
-}
-
 /// Tests that an extension can be loaded without generating any conflicts.
 /// This test is meant to be a shortcut used by other tests, rather than a standalone test.
 async fn load_and_check_no_conflicts(
