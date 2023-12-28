@@ -218,6 +218,13 @@ impl ExtensionManager {
         match should_crash {
             true => {
                 error!("Please resolve extension conflicts before restarting server.");
+
+                // * If this function is being run from a unit test, it needs to panic rather than
+                // * exit because a standard exit is not testable.
+                if cfg!(test) {
+                    panic!();
+                }
+
                 stop(5);
             }
             false => info!("All staged extensions successfully loaded."),
@@ -245,7 +252,7 @@ impl InventoryExtension {
         let id = ExtensionID::new("builtin");
 
         let metadata = Metadata {
-            id: ExtensionID::new("builtin"),
+            id: id.clone(),
             display_name: "Built-in".to_owned(),
             version: Version::new(0, 0, 0),
         };
@@ -301,7 +308,7 @@ impl InventoryExtension {
             },
             DeviceClassification {
                 id: DeviceClassificationUniqueID::new("console"),
-                display_name: "console".to_owned(),
+                display_name: "Console".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
             DeviceClassification {

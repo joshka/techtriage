@@ -123,10 +123,12 @@ impl Database {
                 DEFINE TABLE {DEVICE_MANUFACTURER_TABLE_NAME} SCHEMAFUL;
                 DEFINE FIELD display_name ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE string;
                 DEFINE FIELD extensions ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
+                DEFINE FIELD extensions.* ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
 
                 DEFINE TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} SCHEMAFUL;
                 DEFINE FIELD display_name ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE string;
                 DEFINE FIELD extensions ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
+                DEFINE FIELD extensions.* ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
 
                 DEFINE TABLE {DEVICE_TABLE_NAME} SCHEMAFUL;
                 DEFINE FIELD internal_id ON TABLE {DEVICE_TABLE_NAME} TYPE string;
@@ -135,7 +137,9 @@ impl Database {
                 DEFINE FIELD classification ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_CLASSIFICATION_TABLE_NAME});
                 DEFINE FIELD extension ON TABLE {DEVICE_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
                 DEFINE FIELD primary_model_identifiers ON TABLE {DEVICE_TABLE_NAME} TYPE array<string>;
+                DEFINE FIELD primary_model_identifiers.* ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD extended_model_identifiers ON TABLE {DEVICE_TABLE_NAME} TYPE array<string>;
+                DEFINE FIELD extended_model_identifiers.* ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 ",
             ))
             .await
@@ -311,7 +315,7 @@ impl Database {
     }
 
     /// Adds a deivice manufacturer to the database, merging it with an existing record if needed.
-    async fn add_device_manufacturer(
+    pub async fn add_device_manufacturer(
         &self,
         mut manufacturer: DeviceManufacturer,
     ) -> anyhow::Result<()> {
@@ -373,27 +377,18 @@ impl Database {
             .await?)
     }
 
-    /// Checks that the database only contains the given extension and its contents.
+    // TODO: Add a `get_device` method
+
+    /// Checks that the database contains the given extension and its contents.
     /// Used for testing purposes.
     #[cfg(test)]
-    pub async fn only_contains(&self, extension: &InventoryExtension) {
+    pub async fn contains(&self, extension: &InventoryExtension) {
         let loaded_extensions = self.list_extensions().await.unwrap();
         let loaded_device_manufacturers = self.list_device_manufacturers().await.unwrap();
         let loaded_device_classifications = self.list_device_classifications().await.unwrap();
         let loaded_devices = self.list_devices().await.unwrap();
 
-        assert_eq!(loaded_extensions.len(), 1);
-        assert_eq!(loaded_extensions[0], extension.metadata);
-
-        assert_eq!(
-            loaded_device_manufacturers.len(),
-            extension.device_manufacturers.len()
-        );
-        assert_eq!(
-            loaded_device_classifications.len(),
-            extension.device_classifications.len()
-        );
-        assert_eq!(loaded_devices.len(), extension.devices.len());
+        assert!(loaded_extensions.contains(&extension.metadata));
 
         for manufacturer in &extension.device_manufacturers {
             assert!(loaded_device_manufacturers.contains(manufacturer));
@@ -406,5 +401,15 @@ impl Database {
         for device in &extension.devices {
             assert!(loaded_devices.contains(device));
         }
+    }
+
+    /// Checks that the database only contains the given extension and its contents.
+    /// Used for testing purposes.
+    #[cfg(test)]
+    pub async fn only_contains(&self, extension: &InventoryExtension) {
+        let loaded_extensions = self.list_extensions().await.unwrap();
+        assert_eq!(loaded_extensions.len(), 1);
+
+        self.contains(extension).await;
     }
 }

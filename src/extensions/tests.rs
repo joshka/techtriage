@@ -6,87 +6,189 @@ use crate::database::Database;
 use crate::models::common::{Device, DeviceClassification, DeviceManufacturer, UniqueID};
 use crate::Context;
 
+// TODO: Add test for stage conflicts
+
+/// Tests that any extension which has the same ID as an existing extension, but a different common
+/// name, will trigger a logged warning (no matter the outcome of the load process).
 #[tokio::test]
-/// Tests that an extension which does not already exist in the database will be loaded without
-/// causing a conflict.
+#[ignore = "not yet implemented"]
+async fn name_change_log() {
+    todo!()
+}
+
+/// Tests that an extension will be loaded normally if it does not conflict with an existing
+/// extension, no matter what the handler mode is.
+#[tokio::test]
 async fn load_new_extension() {
     let db = Database::connect_with_name("load_new_extension").await;
+    db.setup_tables().await.unwrap();
 
     // Create a basic extension
     let extension = Extension::test_single(1, 1);
 
-    // Disable auto-reloading and auto-handling
+    // Set the handler to standard mode and check for conflicts
     let ctx = Context::no_override();
+    load_and_check_no_conflicts(&db, &ctx, &extension, true, true).await;
 
-    // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure there were no conflicts
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 0);
-    // Make sure the extension was loaded correctly
-    db.only_contains(&extension).await;
+    // Set the handler to auto-reload mode and check for conflicts
+    let ctx = Context::auto_reload();
+    load_and_check_no_conflicts(&db, &ctx, &extension, true, true).await;
+
+    // Set the handler to auto-handle mode and check for conflicts
+    let ctx = Context::auto_handle();
+    load_and_check_no_conflicts(&db, &ctx, &extension, true, true).await;
 
     db.teardown().await;
 }
 
+/// Tests that an extension which conflicts with an existing extension will be reloaded
+/// automatically if the handler is in auto-reload mode.
 #[tokio::test]
-/// Tests that two extensions with the same ID and metadata will not be reloaded or cause an
-/// unresolvable conflict, even if they have different contents.
-async fn compatible_duplicate_extensions() {
-    let db = Database::connect_with_name("compatible_duplicate_extensions").await;
+async fn auto_reload() {
+    let db = Database::connect_with_name("auto_reload").await;
+    db.setup_tables().await.unwrap();
+
+    // Set the handler to auto-reload mode
+    let ctx = Context::auto_reload();
 
     // Create two extensions with the same metadata, but different contents
-    let (original_extension, duplicate_extension) = Extension::test_pair();
+    let (original_extension, reloaded_extension) = Extension::test_pair_same_metadata();
 
-    // Disable auto-reloading and enable auto-handling
-    let ctx = Context::auto_handle();
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
 
-    // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure there were no conflicts
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 0);
-    // Make sure the extension was loaded correctly
-    db.only_contains(&original_extension).await;
-    // Load the second extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [duplicate_extension.clone()]);
+    // Load the second extension into the database, which should replace the original extension
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [reloaded_extension.clone()]);
     let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 1);
     assert_eq!(
         load_conflicts[0],
-        LoadConflict::duplicate(duplicate_extension.metadata.id)
+        LoadConflict::duplicate(original_extension.metadata.id)
     );
-    // Make sure the second extension was not loaded
+
+    // Make sure the original extension was unloaded and the new version was loaded
+    db.only_contains(&reloaded_extension).await;
+    // Remove the extension so a case with conflicts can be tested
+    db.unload_extension(&reloaded_extension.metadata.id)
+        .await
+        .unwrap();
+
+    // Create two extensions with the same ID, but different versions and different contents
+    let (original_extension, reloaded_extension) = Extension::test_pair_different_metadata();
+
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
+
+    // Load the second extension into the database, which should replace the original extension
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [reloaded_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
+    // Make sure the conflicts were correctly identified
+    assert_eq!(stage_conflicts.len(), 0);
+    assert_eq!(load_conflicts.len(), 1);
+    assert_eq!(
+        load_conflicts[0],
+        LoadConflict::version_change(
+            original_extension.metadata.id,
+            original_extension.metadata.version.clone(),
+            reloaded_extension.metadata.version.clone()
+        )
+    );
+
+    // Make sured that the original extension was unloaded and the new version was loaded
+    db.only_contains(&reloaded_extension).await;
+
+    db.teardown().await;
+}
+
+/// Tests that a conflicting extension which has the same version as an existing extension will be
+/// skipped if the manager is in standard or auto-handle mode.
+#[tokio::test]
+async fn skip_duplicate() {
+    let db = Database::connect_with_name("skip_duplicate").await;
+    db.setup_tables().await.unwrap();
+
+    // Set the handler to standard mode
+    let ctx = Context::no_override();
+
+    // Create two extensions with the same metadata, but different contents
+    let (original_extension, skipped_extension) = Extension::test_pair_same_metadata();
+
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
+
+    // Attempt to load the second extension into the database
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [skipped_extension.clone()]);
+    let load_conflicts = manager.load_extensions(&db).await.unwrap();
+    // Make sure the conflicts were correctly identified
+    assert_eq!(stage_conflicts.len(), 0);
+    assert_eq!(load_conflicts.len(), 1);
+    assert_eq!(
+        load_conflicts[0],
+        LoadConflict::duplicate(original_extension.metadata.id.clone())
+    );
+
+    // Make sure that the original extension was not reloaded
     db.only_contains(&original_extension).await;
 
     db.teardown().await;
 }
 
+/// Tests that a conflicting extension which has a lower version than an existing extension will be
+/// skipped if the manager is in auto-handle mode.
 #[tokio::test]
-/// Tests that an extension will be replaced by an updated version of itself.
-async fn reload_extension_update() {
-    let db = Database::connect_with_name("reload_extension_update").await;
+async fn skip_downgrade() {
+    let db = Database::connect_with_name("skip_downgrade").await;
+    db.setup_tables().await.unwrap();
 
-    // Create two extensions with the same ID, but different versions
-    let (original_extension, mut updated_extension) = Extension::test_pair();
-    updated_extension.metadata.version = Version::new(1, 0, 1);
-
-    // Disable auto-reloading and enable auto-handling
+    // Set the handler to auto-handle mode
     let ctx = Context::auto_handle();
 
-    // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
+    // Create two extensions with different versions and contents
+    let (downgraded_extension, original_extension) = Extension::test_pair_different_metadata();
+
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
+
+    // Attempt to load the downgraded extension into the database
+    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [downgraded_extension.clone()]);
     let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure there were no conflicts
+    // Make sure the conflicts were correctly identified
     assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 0);
-    // Make sure the extension was loaded correctly
+    assert_eq!(load_conflicts.len(), 1);
+    assert_eq!(
+        load_conflicts[0],
+        LoadConflict::version_change(
+            original_extension.metadata.id.clone(),
+            original_extension.metadata.version.clone(),
+            downgraded_extension.metadata.version
+        )
+    );
+
+    // Make sure that the original extension was not reloaded
     db.only_contains(&original_extension).await;
-    // Reload the extension with the updated version, which should unload the original extension
+
+    db.teardown().await;
+}
+
+/// Tests that a conflicting extension which has a higher version than an existing extension will be
+/// reloaded if the manager is in auto-handle mode.
+#[tokio::test]
+async fn auto_update() {
+    let db = Database::connect_with_name("auto_update").await;
+    db.setup_tables().await.unwrap();
+
+    // Set the handler to auto-handle mode
+    let ctx = Context::auto_handle();
+
+    // Create two extensions with different versions and contents
+    let (original_extension, updated_extension) = Extension::test_pair_different_metadata();
+
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
+
+    // Load the updated extension into the database, which should replace the original extension
     let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [updated_extension.clone()]);
     let load_conflicts = manager.load_extensions(&db).await.unwrap();
     // Make sure the conflicts were correctly identified
@@ -100,89 +202,38 @@ async fn reload_extension_update() {
             updated_extension.metadata.version.clone()
         )
     );
-    // Make sure the original extension was unloaded and the newer version was loaded
+
+    // Make sure that the original extension was reloaded
     db.only_contains(&updated_extension).await;
 
     db.teardown().await;
 }
 
+/// Tests that a conflicting extension which has a different version than an existing extension will
+/// cause a crash if the handler is in standard mode.
+// ? What would be the "correct" way to perform an update, and how would it work?
 #[tokio::test]
-/// Tests that an extension will not be replaced by a downgraded version of itself.
-async fn skip_extension_downgrade() {
-    let db = Database::connect_with_name("skip_extension_downgrade").await;
+#[should_panic]
+async fn different_version_crash() {
+    let db = Database::connect_with_name("different_version_crash").await;
+    db.setup_tables().await.unwrap();
 
-    // Create two extensions with the same ID, but different versions
-    let (mut original_extension, downgraded_extension) = Extension::test_pair();
-    original_extension.metadata.version = Version::new(1, 0, 1);
+    // Set the handler to standard mode
+    let ctx = Context::no_override();
 
-    // Disable auto-reloading and enable auto-handling
-    let ctx = Context::auto_handle();
+    // Create two extensions with different versions and contents
+    let (original_extension, updated_extension) = Extension::test_pair_different_metadata();
 
-    // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure there were no conflicts
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 0);
-    // Make sure the extension was loaded correctly
-    db.only_contains(&original_extension).await;
-    // Attempt to load the older version of the extension, which should leave the original intact
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [downgraded_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure the conflicts were correctly identified
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 1);
-    assert_eq!(
-        load_conflicts[0],
-        LoadConflict::version_change(
-            downgraded_extension.metadata.id,
-            original_extension.metadata.version.clone(),
-            downgraded_extension.metadata.version
-        )
-    );
-    // Make sure the original extension was left intact and the older version was not loaded
-    db.only_contains(&original_extension).await;
+    // Check that the original extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &original_extension, true, false).await;
 
-    db.teardown().await;
+    // Attempt to load the updated extension into the database (this should panic the test)
+    let (manager, _) = Manager::with_extensions(&ctx, [updated_extension]);
+    manager.load_extensions(&db).await.unwrap();
 }
 
-#[tokio::test]
-/// Tests that an extension will be replaced by the same extension with the load override flag.
-async fn reload_extension_override() {
-    let db = Database::connect_with_name("reload_extension_override").await;
-
-    // Create two extensions with the same metadata, but with developer mode enabled
-    let (original_extension, reloaded_extension) = Extension::test_pair();
-
-    // Enable auto-reloading and disable auto-handling
-    let ctx = Context::auto_reload();
-
-    // Load the extension into the database
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [original_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure there were no conflicts
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 0);
-    // Make sure the extension was loaded correctly
-    db.only_contains(&original_extension).await;
-    // Reload the extension, which should unload the original extension
-    let (manager, stage_conflicts) = Manager::with_extensions(&ctx, [reloaded_extension.clone()]);
-    let load_conflicts = manager.load_extensions(&db).await.unwrap();
-    // Make sure the conflicts were correctly identified
-    assert_eq!(stage_conflicts.len(), 0);
-    assert_eq!(load_conflicts.len(), 1);
-    assert_eq!(
-        load_conflicts[0],
-        LoadConflict::duplicate(original_extension.metadata.id)
-    );
-    // Make sure the original extension was unloaded and the new version was loaded
-    db.only_contains(&reloaded_extension).await;
-
-    db.teardown().await;
-}
-
-#[tokio::test]
 /// Tests that the builtin extension is loaded correctly.
+#[tokio::test]
 async fn load_builtin_extension() {
     let db = Database::connect_with_name("load_builtin_extension").await;
     db.setup_tables().await.unwrap();
@@ -196,8 +247,8 @@ async fn load_builtin_extension() {
     db.teardown().await;
 }
 
-#[tokio::test]
 /// Tests that the builtin extension cannot be removed from the database.
+#[tokio::test]
 async fn unload_builtin_extension() {
     let db = Database::connect_with_name("unload_builtin_extension").await;
     db.setup_tables().await.unwrap();
@@ -210,6 +261,36 @@ async fn unload_builtin_extension() {
         .is_err());
 
     db.teardown().await;
+}
+
+/// Tests that an extension can be loaded without generating any conflicts.
+/// This test is meant to be a shortcut used by other tests, rather than a standalone test.
+async fn load_and_check_no_conflicts(
+    db: &Database,
+    ctx: &Context,
+    extension: &Extension,
+    only_extension: bool,
+    remove_after: bool,
+) {
+    // Load the extension into the database
+    let (manager, stage_conflicts) = Manager::with_extensions(ctx, [extension.clone()]);
+    let load_conflicts = manager.load_extensions(db).await.unwrap();
+    // Make sure there were no conflicts
+    assert_eq!(stage_conflicts.len(), 0);
+    assert_eq!(load_conflicts.len(), 0);
+    // Make sure the extension was loaded correctly
+    // * The additional check for `only_contains` is not entirely necessary, but it is included to
+    // * provide some extra certainty of the result.
+    if only_extension {
+        db.only_contains(extension).await;
+    } else {
+        db.contains(extension).await;
+    }
+
+    // Remove the extension if requested
+    if remove_after {
+        db.unload_extension(&extension.metadata.id).await.unwrap();
+    }
 }
 
 impl Extension {
@@ -253,9 +334,17 @@ impl Extension {
     }
 
     /// Creates two basic extensions with the same metadata and different contents.
-    /// Can be modified to test different scenarios.
-    fn test_pair() -> (Self, Self) {
+    fn test_pair_same_metadata() -> (Self, Self) {
         (Self::test_single(1, 1), Self::test_single(1, 2))
+    }
+
+    /// Creates two basic extensions with the same ID, a different version, and different contents.
+    fn test_pair_different_metadata() -> (Self, Self) {
+        let extension_1 = Self::test_single(1, 1);
+        let mut extension_2 = Self::test_single(1, 2);
+        extension_2.metadata.version = Version::new(1, 0, 1);
+
+        (extension_1, extension_2)
     }
 }
 
