@@ -33,17 +33,17 @@ pub struct DeviceManufacturerPullRecord {
     pub extensions: Vec<Thing>,
 }
 
-/// A classification of device which can be added to the database.
+/// A category of device which can be added to the database.
 #[derive(Debug, Serialize)]
-pub struct DeviceClassificationPushRecord<'a> {
+pub struct DeviceCategoryPushRecord<'a> {
     pub id: Thing,
     pub display_name: &'a str,
     pub extensions: Vec<Thing>,
 }
 
-/// A classification of device as read from the database.
+/// A category of device as read from the database.
 #[derive(Debug, Deserialize)]
-pub struct DeviceClassificationPullRecord {
+pub struct DeviceCategoryPullRecord {
     pub id: Thing,
     pub display_name: String,
     pub extensions: Vec<Thing>,
@@ -55,7 +55,7 @@ pub struct DevicePushRecord<'a> {
     pub internal_id: &'a str,
     pub display_name: &'a str,
     pub manufacturer: Thing,
-    pub classification: Thing,
+    pub category: Thing,
     pub extension: Thing,
     pub primary_model_identifiers: &'a [String],
     pub extended_model_identifiers: &'a [String],
@@ -67,7 +67,7 @@ pub struct DevicePullRecord {
     pub internal_id: String,
     pub display_name: String,
     pub manufacturer: Thing,
-    pub classification: Thing,
+    pub category: Thing,
     pub extension: Thing,
     pub primary_model_identifiers: Vec<String>,
     pub extended_model_identifiers: Vec<String>,

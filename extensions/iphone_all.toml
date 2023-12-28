@@ -5,14 +5,14 @@ extension_version = '0.1.0'
 [[devices]]
 internal_id = 'iphone_1'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone'
 primary_model_identifiers = ['A1203', 'MA501', 'MA712', 'MB384']
 extended_model_identifiers = ['M68AP']
 [[devices]]
 internal_id = 'iphone_3g'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 3G'
 primary_model_identifiers = [
     'A1241',
@@ -39,7 +39,7 @@ extended_model_identifiers = ['N82AP']
 [[devices]]
 internal_id = 'iphone_3gs'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 3GS'
 primary_model_identifiers = [
     'A1303',
@@ -76,7 +76,7 @@ extended_model_identifiers = ['N88AP']
 [[devices]]
 internal_id = 'iphone_4'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 4'
 primary_model_identifiers = [
     'A1332',
@@ -119,7 +119,7 @@ extended_model_identifiers = ['N90AP', 'N90bAP', 'N92AP']
 [[devices]]
 internal_id = 'iphone_4s'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 4S'
 primary_model_identifiers = [
     'A1387',
@@ -193,7 +193,7 @@ extended_model_identifiers = ['N94AP']
 [[devices]]
 internal_id = 'iphone_5'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 5'
 primary_model_identifiers = [
     'A1428',
@@ -258,7 +258,7 @@ extended_model_identifiers = ['N41AP', 'N42AP']
 [[devices]]
 internal_id = 'iphone_5c'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 5C'
 primary_model_identifiers = [
     'A1456',
@@ -338,7 +338,7 @@ extended_model_identifiers = ['N48AP', 'N49AP']
 [[devices]]
 internal_id = 'iphone_5s'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 5S'
 primary_model_identifiers = [
     'A1453',
@@ -420,7 +420,7 @@ extended_model_identifiers = ['N51AP', 'N53AP']
 [[devices]]
 internal_id = 'iphone_6'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 6'
 primary_model_identifiers = [
     'A1549',
@@ -484,7 +484,7 @@ extended_model_identifiers = ['N61AP']
 [[devices]]
 internal_id = 'iphone_6_plus'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 6 Plus'
 primary_model_identifiers = [
     'A1522',
@@ -533,7 +533,7 @@ extended_model_identifiers = ['N56AP']
 [[devices]]
 internal_id = 'iphone_6s'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 6S'
 primary_model_identifiers = [
     'A1633',
@@ -654,7 +654,7 @@ extended_model_identifiers = ['N71AP', 'N71mAP']
 [[devices]]
 internal_id = 'iphone_6s_plus'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 6S Plus'
 primary_model_identifiers = [
     'A1634',
@@ -752,7 +752,7 @@ extended_model_identifiers = ['N66AP', 'N66mAP']
 [[devices]]
 internal_id = 'iphone_7'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 7'
 primary_model_identifiers = [
     'A1660',
@@ -880,7 +880,7 @@ extended_model_identifiers = ['D10AP', 'D101AP']
 [[devices]]
 internal_id = 'iphone_7_plus'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 7 Plus'
 primary_model_identifiers = [
     'A1661',
@@ -1013,7 +1013,7 @@ extended_model_identifiers = ['D11AP', 'D111AP']
 [[devices]]
 internal_id = 'iphone_8'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 8'
 primary_model_identifiers = [
     'A1863',
@@ -1080,7 +1080,7 @@ extended_model_identifiers = ['D20AP', 'D20AAP', 'D201AP', 'D201AAP']
 [[devices]]
 internal_id = 'iphone_8_plus'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 8 Plus'
 primary_model_identifiers = [
     'A1864',
@@ -1146,7 +1146,7 @@ extended_model_identifiers = ['D21AP', 'D21AAP', 'D211AP', 'D211AAP']
 [[devices]]
 internal_id = 'iphone_x'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone X'
 primary_model_identifiers = [
     'A1865',
@@ -1185,7 +1185,7 @@ extended_model_identifiers = ['D22AP', 'D221AP']
 [[devices]]
 internal_id = 'iphone_xr'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone XR'
 primary_model_identifiers = [
     'A1984',
@@ -1323,7 +1323,7 @@ extended_model_identifiers = ['N841AP']
 [[devices]]
 internal_id = 'iphone_xs'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone XS'
 primary_model_identifiers = [
     'A1920',
@@ -1407,7 +1407,7 @@ extended_model_identifiers = ['D321AP']
 [[devices]]
 internal_id = 'iphone_xs_max'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone XS Max'
 primary_model_identifiers = [
     'A1921',
@@ -1497,7 +1497,7 @@ extended_model_identifiers = ['D331pAP', 'D331AP']
 [[devices]]
 internal_id = 'iphone_11'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 11'
 primary_model_identifiers = [
     'A2111',
@@ -1634,7 +1634,7 @@ extended_model_identifiers = ['N104AP']
 [[devices]]
 internal_id = 'iphone_11_pro'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 11 Pro'
 primary_model_identifiers = [
     'A2160',
@@ -1729,7 +1729,7 @@ extended_model_identifiers = ['D421AP']
 [[devices]]
 internal_id = 'iphone_11_pro_max'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 11 Pro Max'
 primary_model_identifiers = [
     'A2161',
@@ -1824,7 +1824,7 @@ extended_model_identifiers = ['D431AP']
 [[devices]]
 internal_id = 'iphone_12_mini'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 12 Mini'
 primary_model_identifiers = [
     'A2176',
@@ -1980,7 +1980,7 @@ extended_model_identifiers = ['D52gAP']
 [[devices]]
 internal_id = 'iphone_12'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 12'
 primary_model_identifiers = [
     'A2172',
@@ -2136,7 +2136,7 @@ extended_model_identifiers = ['D53gAP']
 [[devices]]
 internal_id = 'iphone_12_pro'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 12 Pro'
 primary_model_identifiers = [
     'A2341',
@@ -2244,7 +2244,7 @@ extended_model_identifiers = ['D53pAP']
 [[devices]]
 internal_id = 'iphone_12_pro_max'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 12 Pro Max'
 primary_model_identifiers = [
     'A2342',
@@ -2352,7 +2352,7 @@ extended_model_identifiers = ['D54pAP']
 [[devices]]
 internal_id = 'iphone_13_mini'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 13 Mini'
 primary_model_identifiers = [
     'A2481',
@@ -2437,7 +2437,7 @@ extended_model_identifiers = ['D16AP']
 [[devices]]
 internal_id = 'iphone_13'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 13'
 primary_model_identifiers = [
     'A2482',
@@ -2522,7 +2522,7 @@ extended_model_identifiers = ['D17AP']
 [[devices]]
 internal_id = 'iphone_13_pro'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 13 Pro'
 primary_model_identifiers = [
     'A2483',
@@ -2595,7 +2595,7 @@ extended_model_identifiers = ['D63AP']
 [[devices]]
 internal_id = 'iphone_13_pro_max'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 13 Pro Max'
 primary_model_identifiers = [
     'A2484',
@@ -2668,7 +2668,7 @@ extended_model_identifiers = ['D64AP']
 [[devices]]
 internal_id = 'iphone_14'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 14'
 primary_model_identifiers = [
     'A2649',
@@ -2741,7 +2741,7 @@ extended_model_identifiers = ['D27AP']
 [[devices]]
 internal_id = 'iphone_14_plus'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 14 Plus'
 primary_model_identifiers = [
     'A2632',
@@ -2814,7 +2814,7 @@ extended_model_identifiers = ['D28AP']
 [[devices]]
 internal_id = 'iphone_14_pro'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 14 Pro'
 primary_model_identifiers = [
     'A2650',
@@ -2891,7 +2891,7 @@ extended_model_identifiers = ['D73AP']
 [[devices]]
 internal_id = 'iphone_14_pro_max'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone 14 Pro Max'
 primary_model_identifiers = [
     'A2651',
@@ -2968,7 +2968,7 @@ extended_model_identifiers = ['D74AP']
 [[devices]]
 internal_id = 'iphone_se1'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone SE 1'
 primary_model_identifiers = [
     'A1662',
@@ -3075,7 +3075,7 @@ extended_model_identifiers = ['N69AP', 'N69uAP']
 [[devices]]
 internal_id = 'iphone_se2'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone SE 2'
 primary_model_identifiers = [
     'A2275',
@@ -3158,7 +3158,7 @@ extended_model_identifiers = ['D79AP']
 [[devices]]
 internal_id = 'iphone_se3'
 manufacturer = 'apple'
-classification = 'phone'
+category = 'phone'
 display_name = 'iPhone SE 3'
 primary_model_identifiers = [
     'A2595',

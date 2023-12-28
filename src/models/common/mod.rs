@@ -1,7 +1,7 @@
 mod ids;
 
 pub use ids::{
-    DeviceClassificationUniqueID, DeviceManufacturerUniqueID, InventoryExtensionUniqueID, UniqueID,
+    DeviceCategoryUniqueID, DeviceManufacturerUniqueID, InventoryExtensionUniqueID, UniqueID,
 };
 
 use std::collections::HashSet;
@@ -27,10 +27,10 @@ pub struct DeviceManufacturer {
     pub extensions: HashSet<InventoryExtensionUniqueID>,
 }
 
-/// A classification of device, such as a phone, tablet, or gaming console.
+/// A category of device, such as a phone, tablet, or gaming console.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DeviceClassification {
-    pub id: DeviceClassificationUniqueID,
+pub struct DeviceCategory {
+    pub id: DeviceCategoryUniqueID,
     pub display_name: String,
     pub extensions: HashSet<InventoryExtensionUniqueID>,
 }
@@ -41,7 +41,7 @@ pub struct Device {
     pub internal_id: String,
     pub display_name: String,
     pub manufacturer: DeviceManufacturerUniqueID,
-    pub classification: DeviceClassificationUniqueID,
+    pub category: DeviceCategoryUniqueID,
     pub extension: InventoryExtensionUniqueID,
     pub primary_model_identifiers: Vec<String>,
     pub extended_model_identifiers: Vec<String>,
@@ -55,10 +55,10 @@ impl DeviceManufacturer {
     }
 }
 
-impl DeviceClassification {
-    /// Merges the extensions field of another device classification into this one.
-    /// Does not check whether the two device classifications share the same ID and other metadata.
-    pub fn merge(&mut self, other: DeviceClassification) {
+impl DeviceCategory {
+    /// Merges the extensions field of another device category into this one.
+    /// Does not check whether the two device categories share the same ID and other metadata.
+    pub fn merge(&mut self, other: DeviceCategory) {
         self.extensions.extend(other.extensions);
     }
 }

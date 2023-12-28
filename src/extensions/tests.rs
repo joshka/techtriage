@@ -3,7 +3,7 @@ use semver::Version;
 use super::conflicts::{LoadConflict, StageConflict, VersionChange};
 use super::{Extension, ExtensionID, ExtensionManager as Manager, Metadata};
 use crate::database::Database;
-use crate::models::common::{Device, DeviceClassification, DeviceManufacturer, UniqueID};
+use crate::models::common::{Device, DeviceCategory, DeviceManufacturer, UniqueID};
 use crate::Context;
 
 // TODO: Add test for stage conflicts
@@ -304,7 +304,7 @@ impl Extension {
                 version: Version::new(1, 0, 0),
             },
             device_manufacturers: Vec::new(),
-            device_classifications: Vec::new(),
+            device_categories: Vec::new(),
             devices: Vec::new(),
         }
     }
@@ -315,19 +315,18 @@ impl Extension {
         // Create an empty extension.
         let mut extension = Self::test(extension_num);
 
-        // Populate the extension with one device manufacturer, device classification, and device.
+        // Populate the extension with one device manufacturer, device category, and device.
         let device_manufacturer = DeviceManufacturer::test(contents_num, &extension.metadata.id);
-        let device_classification =
-            DeviceClassification::test(contents_num, &extension.metadata.id);
+        let device_category = DeviceCategory::test(contents_num, &extension.metadata.id);
         let device = Device::test(
             contents_num,
             &extension.metadata.id,
             &device_manufacturer.id,
-            &device_classification.id,
+            &device_category.id,
         );
 
         extension.device_manufacturers.push(device_manufacturer);
-        extension.device_classifications.push(device_classification);
+        extension.device_categories.push(device_category);
         extension.devices.push(device);
 
         extension

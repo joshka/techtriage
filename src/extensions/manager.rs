@@ -12,8 +12,8 @@ use super::conflicts::{LoadConflict, StageConflict};
 use super::{ExtensionID, Metadata};
 use crate::database::Database;
 use crate::models::common::{
-    Device, DeviceClassification, DeviceClassificationUniqueID, DeviceManufacturer,
-    DeviceManufacturerUniqueID, UniqueID,
+    Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
+    UniqueID,
 };
 use crate::{stop, Context, Override};
 
@@ -22,7 +22,7 @@ use crate::{stop, Context, Override};
 pub struct InventoryExtension {
     pub metadata: Metadata,
     pub device_manufacturers: Vec<DeviceManufacturer>,
-    pub device_classifications: Vec<DeviceClassification>,
+    pub device_categories: Vec<DeviceCategory>,
     pub devices: Vec<Device>,
 }
 
@@ -35,7 +35,7 @@ struct InventoryExtensionToml {
     extension_display_name: String,
     extension_version: String,
     device_manufacturers: Option<Vec<DeviceManufacturerToml>>,
-    device_classifications: Option<Vec<DeviceClassificationToml>>,
+    device_categories: Option<Vec<DeviceCategoryToml>>,
     devices: Vec<DeviceToml>,
 }
 
@@ -47,10 +47,10 @@ struct DeviceManufacturerToml {
     display_name: String,
 }
 
-/// A classification of device as read from a TOML extension.
-/// This must be converted into a [`DeviceClassification`] before adding it to the database.
+/// A category of device as read from a TOML extension.
+/// This must be converted into a [`DeviceCategory`] before adding it to the database.
 #[derive(Debug, Deserialize)]
-struct DeviceClassificationToml {
+struct DeviceCategoryToml {
     id: String,
     display_name: String,
 }
@@ -62,7 +62,7 @@ struct DeviceToml {
     internal_id: String,
     display_name: String,
     manufacturer: String,
-    classification: String,
+    category: String,
     primary_model_identifiers: Vec<String>,
     extended_model_identifiers: Vec<String>,
 }
@@ -295,29 +295,29 @@ impl InventoryExtension {
             },
         ];
 
-        let device_classifications = vec![
-            DeviceClassification {
-                id: DeviceClassificationUniqueID::new("phone"),
+        let device_categories = vec![
+            DeviceCategory {
+                id: DeviceCategoryUniqueID::new("phone"),
                 display_name: "Phone".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
-            DeviceClassification {
-                id: DeviceClassificationUniqueID::new("tablet"),
+            DeviceCategory {
+                id: DeviceCategoryUniqueID::new("tablet"),
                 display_name: "Tablet".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
-            DeviceClassification {
-                id: DeviceClassificationUniqueID::new("console"),
+            DeviceCategory {
+                id: DeviceCategoryUniqueID::new("console"),
                 display_name: "Console".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
-            DeviceClassification {
-                id: DeviceClassificationUniqueID::new("laptop"),
+            DeviceCategory {
+                id: DeviceCategoryUniqueID::new("laptop"),
                 display_name: "Laptop".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
-            DeviceClassification {
-                id: DeviceClassificationUniqueID::new("desktop"),
+            DeviceCategory {
+                id: DeviceCategoryUniqueID::new("desktop"),
                 display_name: "Desktop".to_owned(),
                 extensions: HashSet::from([id.clone()]),
             },
@@ -326,14 +326,14 @@ impl InventoryExtension {
         Self {
             metadata,
             device_manufacturers,
-            device_classifications,
+            device_categories,
             devices: Vec::new(),
         }
     }
 }
 
 // TODO: Remove unwraps
-// * Inner types here ([`DeviceManufacturer`], [`DeviceClassification`], [`Device`]) must be
+// * Inner types here ([`DeviceManufacturer`], [`DeviceCategory`], [`Device`]) must be
 // * converted with context provided by the [`ExtensionToml`] itself, so they cannot be converted
 // * directly.
 impl From<InventoryExtensionToml> for InventoryExtension {
@@ -349,12 +349,12 @@ impl From<InventoryExtensionToml> for InventoryExtension {
             })
             .collect();
 
-        let device_classifications = toml
-            .device_classifications
+        let device_categories = toml
+            .device_categories
             .unwrap_or_default()
             .into_iter()
-            .map(|c| DeviceClassification {
-                id: DeviceClassificationUniqueID::new(&c.id),
+            .map(|c| DeviceCategory {
+                id: DeviceCategoryUniqueID::new(&c.id),
                 display_name: c.display_name,
                 extensions: HashSet::from([ExtensionID::new(&toml.extension_id)]),
             })
@@ -368,7 +368,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
                 internal_id: d.internal_id,
                 display_name: d.display_name,
                 manufacturer: DeviceManufacturerUniqueID::new(&d.manufacturer),
-                classification: DeviceClassificationUniqueID::new(&d.classification),
+                category: DeviceCategoryUniqueID::new(&d.category),
                 extension: ExtensionID::new(&toml.extension_id),
                 primary_model_identifiers: d.primary_model_identifiers,
                 extended_model_identifiers: d.extended_model_identifiers,
@@ -382,7 +382,7 @@ impl From<InventoryExtensionToml> for InventoryExtension {
                 version: Version::from_str(&toml.extension_version).unwrap(),
             },
             device_manufacturers,
-            device_classifications,
+            device_categories,
             devices,
         }
     }

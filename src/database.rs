@@ -10,11 +10,11 @@ use surrealdb::Surreal;
 
 use crate::extensions::InventoryExtension;
 use crate::models::common::{
-    Device, DeviceClassification, DeviceClassificationUniqueID, DeviceManufacturer,
-    DeviceManufacturerUniqueID, InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
+    Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
+    InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
 };
 use crate::models::database::{
-    DeviceClassificationPullRecord, DeviceClassificationPushRecord, DeviceManufacturerPullRecord,
+    DeviceCategoryPullRecord, DeviceCategoryPushRecord, DeviceManufacturerPullRecord,
     DeviceManufacturerPushRecord, DevicePullRecord, DevicePushRecord, GenericPullRecord,
     InventoryExtensionMetadataPullRecord, InventoryExtensionMetadataPushRecord,
 };
@@ -22,7 +22,7 @@ use crate::stop;
 
 pub const EXTENSION_TABLE_NAME: &str = "extensions";
 pub const DEVICE_MANUFACTURER_TABLE_NAME: &str = "device_manufacturers";
-pub const DEVICE_CLASSIFICATION_TABLE_NAME: &str = "device_classifications";
+pub const DEVICE_CATEGORY_TABLE_NAME: &str = "device_categories";
 pub const DEVICE_TABLE_NAME: &str = "devices";
 
 /// Wrapper type for a SurrealDB connection.
@@ -125,16 +125,16 @@ impl Database {
                 DEFINE FIELD extensions ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
                 DEFINE FIELD extensions.* ON TABLE {DEVICE_MANUFACTURER_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
 
-                DEFINE TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} SCHEMAFUL;
-                DEFINE FIELD display_name ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE string;
-                DEFINE FIELD extensions ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
-                DEFINE FIELD extensions.* ON TABLE {DEVICE_CLASSIFICATION_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
+                DEFINE TABLE {DEVICE_CATEGORY_TABLE_NAME} SCHEMAFUL;
+                DEFINE FIELD display_name ON TABLE {DEVICE_CATEGORY_TABLE_NAME} TYPE string;
+                DEFINE FIELD extensions ON TABLE {DEVICE_CATEGORY_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
+                DEFINE FIELD extensions.* ON TABLE {DEVICE_CATEGORY_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
 
                 DEFINE TABLE {DEVICE_TABLE_NAME} SCHEMAFUL;
                 DEFINE FIELD internal_id ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD display_name ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD manufacturer ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_MANUFACTURER_TABLE_NAME});
-                DEFINE FIELD classification ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_CLASSIFICATION_TABLE_NAME});
+                DEFINE FIELD category ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_CATEGORY_TABLE_NAME});
                 DEFINE FIELD extension ON TABLE {DEVICE_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
                 DEFINE FIELD primary_model_identifiers ON TABLE {DEVICE_TABLE_NAME} TYPE array<string>;
                 DEFINE FIELD primary_model_identifiers.* ON TABLE {DEVICE_TABLE_NAME} TYPE string;
@@ -151,7 +151,7 @@ impl Database {
         Ok(())
     }
 
-    /// Sets up IDs for "built-in" manufacturers and device classifications.
+    /// Sets up IDs for "built-in" manufacturers and device categories.
     pub async fn add_builtins(&self) -> anyhow::Result<()> {
         use surrealdb::{error::Api, Error};
         info!("Setting up reserved/built-in items...");
@@ -195,8 +195,8 @@ impl Database {
             .await?;
 
         let mut futures = Vec::new();
-        for classification in extension.device_classifications {
-            futures.push(self.add_device_classification(classification));
+        for category in extension.device_categories {
+            futures.push(self.add_device_category(category));
         }
         future::join_all(futures).await;
 
@@ -233,7 +233,7 @@ impl Database {
             .query(&format!(
                 "
                 DELETE {DEVICE_MANUFACTURER_TABLE_NAME} WHERE extensions = [\"{0}\"];
-                DELETE {DEVICE_CLASSIFICATION_TABLE_NAME} WHERE extensions = [\"{0}\"];
+                DELETE {DEVICE_CATEGORY_TABLE_NAME} WHERE extensions = [\"{0}\"];
                 DELETE {DEVICE_TABLE_NAME} WHERE extension = \"{0}\";
                 DELETE {EXTENSION_TABLE_NAME} WHERE id = \"{0}\";
                 ",
@@ -283,20 +283,20 @@ impl Database {
         Ok(manufacturers)
     }
 
-    /// Lists all the device classifications in the database.
+    /// Lists all the device categories in the database.
     #[allow(dead_code)]
-    pub async fn list_device_classifications(&self) -> anyhow::Result<Vec<DeviceClassification>> {
+    pub async fn list_device_categories(&self) -> anyhow::Result<Vec<DeviceCategory>> {
         let pull_records = self
             .connection
-            .select::<Vec<DeviceClassificationPullRecord>>(DEVICE_CLASSIFICATION_TABLE_NAME)
+            .select::<Vec<DeviceCategoryPullRecord>>(DEVICE_CATEGORY_TABLE_NAME)
             .await?;
 
-        let mut classifications = Vec::new();
+        let mut categories = Vec::new();
         for record in pull_records {
-            classifications.push(DeviceClassification::try_from(record)?);
+            categories.push(DeviceCategory::try_from(record)?);
         }
 
-        Ok(classifications)
+        Ok(categories)
     }
 
     /// Lists all the devices in the database.
@@ -331,24 +331,21 @@ impl Database {
         Ok(())
     }
 
-    /// Adds a device classification to the database, merging it with an existing record if needed.
-    async fn add_device_classification(
-        &self,
-        mut classification: DeviceClassification,
-    ) -> anyhow::Result<()> {
-        if let Some(existing_record) = self.get_device_classification(&classification.id).await? {
-            classification.merge(existing_record.try_into()?);
+    /// Adds a device category to the database, merging it with an existing record if needed.
+    async fn add_device_category(&self, mut category: DeviceCategory) -> anyhow::Result<()> {
+        if let Some(existing_record) = self.get_device_category(&category.id).await? {
+            category.merge(existing_record.try_into()?);
         }
 
         self.connection
-            .create::<Vec<GenericPullRecord>>(DEVICE_CLASSIFICATION_TABLE_NAME)
-            .content(DeviceClassificationPushRecord::from(&classification))
+            .create::<Vec<GenericPullRecord>>(DEVICE_CATEGORY_TABLE_NAME)
+            .content(DeviceCategoryPushRecord::from(&category))
             .await?;
 
         Ok(())
     }
 
-    // ? Can this be combined with `get_device_classification()` into a single function?
+    // ? Can this be combined with `get_device_category()` into a single function?
     /// Gets a device manufacturer from the database, if it exists.
     async fn get_device_manufacturer(
         &self,
@@ -363,15 +360,15 @@ impl Database {
             .await?)
     }
 
-    /// Gets a device classification from the database, if it exists.
-    async fn get_device_classification(
+    /// Gets a device category from the database, if it exists.
+    async fn get_device_category(
         &self,
-        id: &DeviceClassificationUniqueID,
-    ) -> anyhow::Result<Option<DeviceClassificationPullRecord>> {
+        id: &DeviceCategoryUniqueID,
+    ) -> anyhow::Result<Option<DeviceCategoryPullRecord>> {
         Ok(self
             .connection
-            .select::<Option<DeviceClassificationPullRecord>>((
-                DEVICE_CLASSIFICATION_TABLE_NAME,
+            .select::<Option<DeviceCategoryPullRecord>>((
+                DEVICE_CATEGORY_TABLE_NAME,
                 id.unnamespaced(),
             ))
             .await?)
@@ -385,7 +382,7 @@ impl Database {
     pub async fn contains(&self, extension: &InventoryExtension) {
         let loaded_extensions = self.list_extensions().await.unwrap();
         let loaded_device_manufacturers = self.list_device_manufacturers().await.unwrap();
-        let loaded_device_classifications = self.list_device_classifications().await.unwrap();
+        let loaded_device_categories = self.list_device_categories().await.unwrap();
         let loaded_devices = self.list_devices().await.unwrap();
 
         assert!(loaded_extensions.contains(&extension.metadata));
@@ -394,8 +391,8 @@ impl Database {
             assert!(loaded_device_manufacturers.contains(manufacturer));
         }
 
-        for classification in &extension.device_classifications {
-            assert!(loaded_device_classifications.contains(classification));
+        for category in &extension.device_categories {
+            assert!(loaded_device_categories.contains(category));
         }
 
         for device in &extension.devices {
