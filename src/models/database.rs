@@ -52,11 +52,11 @@ pub struct DeviceCategoryPullRecord {
 /// A device and all of its relevant metadata, which can be added to the database.
 #[derive(Debug, Serialize)]
 pub struct DevicePushRecord<'a> {
-    pub internal_id: &'a str,
+    pub id: Thing,
     pub display_name: &'a str,
     pub manufacturer: Thing,
     pub category: Thing,
-    pub extension: Thing,
+    pub extensions: Vec<Thing>,
     pub primary_model_identifiers: &'a [String],
     pub extended_model_identifiers: &'a [String],
 }
@@ -64,11 +64,11 @@ pub struct DevicePushRecord<'a> {
 /// A device and all of its relevant metadata, as read from the database.
 #[derive(Debug, Deserialize)]
 pub struct DevicePullRecord {
-    pub internal_id: String,
+    pub id: Thing,
     pub display_name: String,
     pub manufacturer: Thing,
     pub category: Thing,
-    pub extension: Thing,
+    pub extensions: Vec<Thing>,
     pub primary_model_identifiers: Vec<String>,
     pub extended_model_identifiers: Vec<String>,
 }

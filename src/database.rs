@@ -1,4 +1,3 @@
-use std::future::IntoFuture;
 use std::net::{Ipv4Addr, SocketAddr};
 
 use futures_util::future;
@@ -10,7 +9,7 @@ use surrealdb::Surreal;
 use crate::extensions::InventoryExtension;
 use crate::models::common::{
     Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
-    InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
+    DeviceUniqueID, InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
 };
 use crate::models::database::{
     DeviceCategoryPullRecord, DeviceCategoryPushRecord, DeviceManufacturerPullRecord,
@@ -130,11 +129,11 @@ impl Database {
                 DEFINE FIELD extensions.* ON TABLE {DEVICE_CATEGORY_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
 
                 DEFINE TABLE {DEVICE_TABLE_NAME} SCHEMAFUL;
-                DEFINE FIELD internal_id ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD display_name ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD manufacturer ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_MANUFACTURER_TABLE_NAME});
                 DEFINE FIELD category ON TABLE {DEVICE_TABLE_NAME} TYPE record({DEVICE_CATEGORY_TABLE_NAME});
-                DEFINE FIELD extension ON TABLE {DEVICE_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
+                DEFINE FIELD extensions ON TABLE {DEVICE_TABLE_NAME} TYPE array<record({EXTENSION_TABLE_NAME})>;
+                DEFINE FIELD extensions.* ON TABLE {DEVICE_TABLE_NAME} TYPE record({EXTENSION_TABLE_NAME});
                 DEFINE FIELD primary_model_identifiers ON TABLE {DEVICE_TABLE_NAME} TYPE array<string>;
                 DEFINE FIELD primary_model_identifiers.* ON TABLE {DEVICE_TABLE_NAME} TYPE string;
                 DEFINE FIELD extended_model_identifiers ON TABLE {DEVICE_TABLE_NAME} TYPE array<string>;
@@ -183,12 +182,7 @@ impl Database {
 
         let mut futures = Vec::new();
         for device in extension.devices {
-            futures.push(
-                self.connection
-                    .create::<Vec<GenericPullRecord>>(DEVICE_TABLE_NAME)
-                    .content(DevicePushRecord::from(&device))
-                    .into_future(),
-            )
+            futures.push(self.add_device(device));
         }
         future::join_all(futures).await;
 
@@ -205,7 +199,7 @@ impl Database {
                 "
                 DELETE {DEVICE_MANUFACTURER_TABLE_NAME} WHERE extensions = [\"{0}\"];
                 DELETE {DEVICE_CATEGORY_TABLE_NAME} WHERE extensions = [\"{0}\"];
-                DELETE {DEVICE_TABLE_NAME} WHERE extension = \"{0}\";
+                DELETE {DEVICE_TABLE_NAME} WHERE extensions = [\"{0}\"];
                 DELETE {EXTENSION_TABLE_NAME} WHERE id = \"{0}\";
                 ",
                 extension_id.namespaced()
@@ -316,6 +310,20 @@ impl Database {
         Ok(())
     }
 
+    /// Adds a device to the database, merging it with an existing record if needed.
+    async fn add_device(&self, mut device: Device) -> anyhow::Result<()> {
+        if let Some(existing_record) = self.get_device(&device.id).await? {
+            device.merge(existing_record.try_into()?);
+        }
+
+        self.connection
+            .create::<Vec<GenericPullRecord>>(DEVICE_TABLE_NAME)
+            .content(DevicePushRecord::from(&device))
+            .await?;
+
+        Ok(())
+    }
+
     // ? Can this be combined with `get_device_category()` into a single function?
     /// Gets a device manufacturer from the database, if it exists.
     async fn get_device_manufacturer(
@@ -345,7 +353,13 @@ impl Database {
             .await?)
     }
 
-    // TODO: Add a `get_device` method
+    /// Gets a device from the database, if it exists.
+    async fn get_device(&self, id: &DeviceUniqueID) -> anyhow::Result<Option<DevicePullRecord>> {
+        Ok(self
+            .connection
+            .select::<Option<DevicePullRecord>>((DEVICE_TABLE_NAME, id.unnamespaced()))
+            .await?)
+    }
 
     /// Checks that the database contains the given extension and its contents.
     /// Used for testing purposes.

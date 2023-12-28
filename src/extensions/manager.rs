@@ -13,7 +13,7 @@ use super::{ExtensionID, Metadata};
 use crate::database::Database;
 use crate::models::common::{
     Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
-    UniqueID,
+    DeviceUniqueID, UniqueID,
 };
 use crate::{stop, Context, Override};
 
@@ -59,7 +59,7 @@ struct DeviceCategoryToml {
 /// This must be converted into a [`Device`] before adding it to the database.
 #[derive(Debug, Deserialize)]
 struct DeviceToml {
-    internal_id: String,
+    id: String,
     display_name: String,
     manufacturer: String,
     category: String,
@@ -279,11 +279,11 @@ impl From<InventoryExtensionToml> for InventoryExtension {
             .into_iter()
             // ? Is there a more conventional way to do this conversion?
             .map(|d| Device {
-                internal_id: d.internal_id,
+                id: DeviceUniqueID::new(&d.id),
                 display_name: d.display_name,
                 manufacturer: DeviceManufacturerUniqueID::new(&d.manufacturer),
                 category: DeviceCategoryUniqueID::new(&d.category),
-                extension: ExtensionID::new(&toml.extension_id),
+                extensions: HashSet::from([ExtensionID::new(&toml.extension_id)]),
                 primary_model_identifiers: d.primary_model_identifiers,
                 extended_model_identifiers: d.extended_model_identifiers,
             })

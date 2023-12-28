@@ -2,7 +2,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::database::{
-    DEVICE_CATEGORY_TABLE_NAME, DEVICE_MANUFACTURER_TABLE_NAME, EXTENSION_TABLE_NAME,
+    DEVICE_CATEGORY_TABLE_NAME, DEVICE_MANUFACTURER_TABLE_NAME, DEVICE_TABLE_NAME,
+    EXTENSION_TABLE_NAME,
 };
 
 /// A trait for ID types which are used as "primary keys" (unique string identifiers) in the
@@ -28,6 +29,10 @@ pub struct DeviceManufacturerUniqueID(String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DeviceCategoryUniqueID(String);
 
+/// An unnamespaced unique device ID.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct DeviceUniqueID(String);
+
 impl UniqueID for InventoryExtensionUniqueID {
     const TABLE_NAME: &'static str = EXTENSION_TABLE_NAME;
     fn new(id: impl Into<String>) -> Self {
@@ -52,6 +57,17 @@ impl UniqueID for DeviceManufacturerUniqueID {
 
 impl UniqueID for DeviceCategoryUniqueID {
     const TABLE_NAME: &'static str = DEVICE_CATEGORY_TABLE_NAME;
+    fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+
+    fn unnamespaced(&self) -> &str {
+        &self.0
+    }
+}
+
+impl UniqueID for DeviceUniqueID {
+    const TABLE_NAME: &'static str = DEVICE_TABLE_NAME;
     fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }

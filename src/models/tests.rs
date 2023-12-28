@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use super::common::{
     Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
-    InventoryExtensionUniqueID, UniqueID,
+    DeviceUniqueID, InventoryExtensionUniqueID, UniqueID,
 };
 
 impl DeviceManufacturer {
@@ -39,11 +39,11 @@ impl Device {
         category_id: &DeviceCategoryUniqueID,
     ) -> Self {
         Self {
-            internal_id: format!("test_{num}"),
+            id: DeviceUniqueID::new(format!("test_{num}")),
             display_name: format!("Test Device {num}"),
             manufacturer: manufacturer_id.clone(),
             category: category_id.clone(),
-            extension: extension_id.clone(),
+            extensions: HashSet::from([extension_id.clone()]),
             primary_model_identifiers: vec![format!("test_{num}_primary")],
             extended_model_identifiers: vec![format!("test_{num}_extended")],
         }

@@ -6,7 +6,7 @@ use surrealdb::sql::{Id, Thing};
 
 use super::common::{
     Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
-    InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
+    DeviceUniqueID, InventoryExtensionMetadata, InventoryExtensionUniqueID, UniqueID,
 };
 use super::database::{
     DeviceCategoryPullRecord, DeviceCategoryPushRecord, DeviceManufacturerPullRecord,
@@ -14,7 +14,8 @@ use super::database::{
     InventoryExtensionMetadataPullRecord, InventoryExtensionMetadataPushRecord,
 };
 use crate::database::{
-    DEVICE_CATEGORY_TABLE_NAME, DEVICE_MANUFACTURER_TABLE_NAME, EXTENSION_TABLE_NAME,
+    DEVICE_CATEGORY_TABLE_NAME, DEVICE_MANUFACTURER_TABLE_NAME, DEVICE_TABLE_NAME,
+    EXTENSION_TABLE_NAME,
 };
 
 impl<'a> From<&'a InventoryExtensionMetadata> for InventoryExtensionMetadataPushRecord<'a> {
@@ -91,11 +92,11 @@ impl TryFrom<DeviceCategoryPullRecord> for DeviceCategory {
 impl<'a> From<&'a Device> for DevicePushRecord<'a> {
     fn from(device: &'a Device) -> Self {
         DevicePushRecord {
-            internal_id: &device.internal_id,
+            id: Thing::from(&device.id),
             display_name: &device.display_name,
             manufacturer: Thing::from(&device.manufacturer),
             category: Thing::from(&device.category),
-            extension: Thing::from(&device.extension),
+            extensions: device.extensions.iter().map(Thing::from).collect(),
             primary_model_identifiers: &device.primary_model_identifiers,
             extended_model_identifiers: &device.extended_model_identifiers,
         }
@@ -106,11 +107,15 @@ impl TryFrom<DevicePullRecord> for Device {
     type Error = anyhow::Error;
     fn try_from(device: DevicePullRecord) -> Result<Self, Self::Error> {
         Ok(Device {
-            internal_id: device.internal_id,
+            id: DeviceUniqueID::try_from(device.id)?,
             display_name: device.display_name,
             manufacturer: DeviceManufacturerUniqueID::try_from(device.manufacturer)?,
             category: DeviceCategoryUniqueID::try_from(device.category)?,
-            extension: InventoryExtensionUniqueID::try_from(device.extension)?,
+            extensions: device
+                .extensions
+                .into_iter()
+                .map(InventoryExtensionUniqueID::try_from)
+                .collect::<Result<HashSet<_>, _>>()?,
             primary_model_identifiers: device.primary_model_identifiers,
             extended_model_identifiers: device.extended_model_identifiers,
         })
@@ -173,6 +178,26 @@ impl TryFrom<Thing> for DeviceCategoryUniqueID {
             Ok(DeviceCategoryUniqueID::new(id))
         } else {
             Err(anyhow!("Non-string ID for device category"))
+        }
+    }
+}
+
+impl From<&DeviceUniqueID> for Thing {
+    fn from(id: &DeviceUniqueID) -> Self {
+        Thing {
+            tb: DEVICE_TABLE_NAME.to_owned(),
+            id: Id::String(id.unnamespaced().to_owned()),
+        }
+    }
+}
+
+impl TryFrom<Thing> for DeviceUniqueID {
+    type Error = anyhow::Error;
+    fn try_from(thing: Thing) -> Result<Self, Self::Error> {
+        if let Id::String(id) = thing.id {
+            Ok(DeviceUniqueID::new(id))
+        } else {
+            Err(anyhow!("Non-string ID for device"))
         }
     }
 }
