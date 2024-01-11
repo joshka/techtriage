@@ -69,7 +69,7 @@ async fn auto_reload() {
     );
 
     // Make sure the original extension was unloaded and the new version was loaded
-    db.only_contains(&reloaded_extension).await;
+    db.contains(&reloaded_extension, true).await;
     // Remove the extension so a case with conflicts can be tested
     db.unload_extension(&reloaded_extension.metadata.id)
         .await
@@ -97,7 +97,7 @@ async fn auto_reload() {
     );
 
     // Make sured that the original extension was unloaded and the new version was loaded
-    db.only_contains(&reloaded_extension).await;
+    db.contains(&reloaded_extension, true).await;
 
     db.teardown().await;
 }
@@ -130,7 +130,7 @@ async fn skip_duplicate() {
     );
 
     // Make sure that the original extension was not reloaded
-    db.only_contains(&original_extension).await;
+    db.contains(&original_extension, true).await;
 
     db.teardown().await;
 }
@@ -167,7 +167,7 @@ async fn skip_downgrade() {
     );
 
     // Make sure that the original extension was not reloaded
-    db.only_contains(&original_extension).await;
+    db.contains(&original_extension, true).await;
 
     db.teardown().await;
 }
@@ -204,7 +204,7 @@ async fn auto_update() {
     );
 
     // Make sure that the original extension was reloaded
-    db.only_contains(&updated_extension).await;
+    db.contains(&updated_extension, true).await;
 
     db.teardown().await;
 }
@@ -230,6 +230,35 @@ async fn different_version_crash() {
     // Attempt to load the updated extension into the database (this should panic the test)
     let (manager, _) = Manager::with_extensions(&ctx, [updated_extension]);
     manager.load_extensions(&db).await.unwrap();
+
+    // TODO: How to do teardown here?
+}
+
+/// Tests that extensions are unloaded correctly.
+#[tokio::test]
+async fn unload_extension() {
+    let db = Database::connect_with_name("unload_extension").await;
+    db.setup_tables().await.unwrap();
+
+    // Set the handler to standard mode
+    let ctx = Context::no_override();
+
+    // Create two extensions with different names but the same contents
+    let (extension_1, extension_2) = Extension::test_pair_same_contents();
+
+    // Check that the first extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &extension_1, true, false).await;
+
+    // Check that the second extension can be loaded without conflicts
+    load_and_check_no_conflicts(&db, &ctx, &extension_2, false, false).await;
+
+    // Unload the first extension
+    db.unload_extension(&extension_1.metadata.id).await.unwrap();
+
+    // Make sure the first extension was unloaded and only the second extension remains
+    db.contains(&extension_2, true).await;
+
+    db.teardown().await;
 }
 
 /// Tests that an extension can be loaded without generating any conflicts.
@@ -248,13 +277,9 @@ async fn load_and_check_no_conflicts(
     assert_eq!(stage_conflicts.len(), 0);
     assert_eq!(load_conflicts.len(), 0);
     // Make sure the extension was loaded correctly
-    // * The additional check for `only_contains` is not entirely necessary, but it is included to
+    // * The additional check for exclusivity is not entirely necessary, but it is included to
     // * provide some extra certainty of the result.
-    if only_extension {
-        db.only_contains(extension).await;
-    } else {
-        db.contains(extension).await;
-    }
+    db.contains(extension, only_extension).await;
 
     // Remove the extension if requested
     if remove_after {
@@ -313,6 +338,11 @@ impl Extension {
         extension_2.metadata.version = Version::new(1, 0, 1);
 
         (extension_1, extension_2)
+    }
+
+    /// Creates two basic extensions with a different ID, the same version, and the same contents.
+    fn test_pair_same_contents() -> (Self, Self) {
+        (Self::test_single(1, 1), Self::test_single(2, 1))
     }
 }
 

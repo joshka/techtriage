@@ -201,6 +201,10 @@ impl Database {
                 DELETE {DEVICE_CATEGORY_TABLE_NAME} WHERE extensions = [\"{0}\"];
                 DELETE {DEVICE_TABLE_NAME} WHERE extensions = [\"{0}\"];
                 DELETE {EXTENSION_TABLE_NAME} WHERE id = \"{0}\";
+                
+                UPDATE {DEVICE_MANUFACTURER_TABLE_NAME} SET extensions -= [\"{0}\"];
+                UPDATE {DEVICE_CATEGORY_TABLE_NAME} SET extensions -= [\"{0}\"];
+                UPDATE {DEVICE_TABLE_NAME} SET extensions -= [\"{0}\"];
                 ",
                 extension_id.namespaced()
             ))
@@ -286,6 +290,7 @@ impl Database {
     ) -> anyhow::Result<()> {
         if let Some(existing_record) = self.get_device_manufacturer(&manufacturer.id).await? {
             manufacturer.merge(existing_record.try_into()?);
+            self.remove_device_manufacturer(&manufacturer.id).await?;
         }
 
         self.connection
@@ -300,6 +305,7 @@ impl Database {
     async fn add_device_category(&self, mut category: DeviceCategory) -> anyhow::Result<()> {
         if let Some(existing_record) = self.get_device_category(&category.id).await? {
             category.merge(existing_record.try_into()?);
+            self.remove_device_category(&category.id).await?;
         }
 
         self.connection
@@ -314,11 +320,43 @@ impl Database {
     async fn add_device(&self, mut device: Device) -> anyhow::Result<()> {
         if let Some(existing_record) = self.get_device(&device.id).await? {
             device.merge(existing_record.try_into()?);
+            self.remove_device(&device.id).await?;
         }
 
         self.connection
             .create::<Vec<GenericPullRecord>>(DEVICE_TABLE_NAME)
             .content(DevicePushRecord::from(&device))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Removes a single device manufacturer from the database.
+    // TODO: Any way to consolidate these 3 methods?
+    pub async fn remove_device_manufacturer(
+        &self,
+        id: &DeviceManufacturerUniqueID,
+    ) -> anyhow::Result<()> {
+        self.connection
+            .query(&format!("DELETE {}", id.namespaced()))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Removes a single device category from the database.
+    pub async fn remove_device_category(&self, id: &DeviceCategoryUniqueID) -> anyhow::Result<()> {
+        self.connection
+            .query(&format!("DELETE {}", id.namespaced()))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Removes a single device from the database.
+    pub async fn remove_device(&self, id: &DeviceUniqueID) -> anyhow::Result<()> {
+        self.connection
+            .query(&format!("DELETE {}", id.namespaced()))
             .await?;
 
         Ok(())
@@ -364,34 +402,83 @@ impl Database {
     /// Checks that the database contains the given extension and its contents.
     /// Used for testing purposes.
     #[cfg(test)]
-    pub async fn contains(&self, extension: &InventoryExtension) {
+    pub async fn contains(&self, extension: &InventoryExtension, exclusive: bool) {
         let loaded_extensions = self.list_extensions().await.unwrap();
+
+        if exclusive {
+            assert_eq!(loaded_extensions.len(), 1);
+        }
+
         let loaded_device_manufacturers = self.list_device_manufacturers().await.unwrap();
         let loaded_device_categories = self.list_device_categories().await.unwrap();
         let loaded_devices = self.list_devices().await.unwrap();
 
         assert!(loaded_extensions.contains(&extension.metadata));
 
-        for manufacturer in &extension.device_manufacturers {
-            assert!(loaded_device_manufacturers.contains(manufacturer));
+        'extension_manufacturers: for extension_manufacturer in &extension.device_manufacturers {
+            for loaded_manufacturer in &loaded_device_manufacturers {
+                let same_id = loaded_manufacturer.id == extension_manufacturer.id;
+                let same_display_name =
+                    loaded_manufacturer.display_name == extension_manufacturer.display_name;
+                let correct_extensions = (exclusive
+                    && loaded_manufacturer.extensions.len() == 1
+                    && loaded_manufacturer
+                        .extensions
+                        .contains(&extension.metadata.id))
+                    || (!exclusive
+                        && loaded_manufacturer
+                            .extensions
+                            .contains(&extension.metadata.id));
+
+                if same_id && same_display_name && correct_extensions {
+                    continue 'extension_manufacturers;
+                }
+            }
+
+            panic!("Device manufacturer not found");
         }
 
-        for category in &extension.device_categories {
-            assert!(loaded_device_categories.contains(category));
+        'extension_categories: for extension_category in &extension.device_categories {
+            for loaded_category in &loaded_device_categories {
+                let same_id = loaded_category.id == extension_category.id;
+                let same_display_name =
+                    loaded_category.display_name == extension_category.display_name;
+                let correct_extensions = (exclusive
+                    && loaded_category.extensions.len() == 1
+                    && loaded_category.extensions.contains(&extension.metadata.id))
+                    || (!exclusive && loaded_category.extensions.contains(&extension.metadata.id));
+
+                if same_id && same_display_name && correct_extensions {
+                    continue 'extension_categories;
+                }
+            }
+
+            panic!("Device category not found");
         }
 
-        for device in &extension.devices {
-            assert!(loaded_devices.contains(device));
+        'extension_devices: for extension_device in &extension.devices {
+            // TODO: Add checks for primary and extended model identifiers
+            for loaded_device in &loaded_devices {
+                let same_id = loaded_device.id == extension_device.id;
+                let same_display_name = loaded_device.display_name == extension_device.display_name;
+                let same_manufacturer = loaded_device.manufacturer == extension_device.manufacturer;
+                let same_category = loaded_device.category == extension_device.category;
+                let correct_extensions = (exclusive
+                    && loaded_device.extensions.len() == 1
+                    && loaded_device.extensions.contains(&extension.metadata.id))
+                    || (!exclusive && loaded_device.extensions.contains(&extension.metadata.id));
+
+                if same_id
+                    && same_display_name
+                    && same_manufacturer
+                    && same_category
+                    && correct_extensions
+                {
+                    continue 'extension_devices;
+                }
+            }
+
+            panic!("Device not found");
         }
-    }
-
-    /// Checks that the database only contains the given extension and its contents.
-    /// Used for testing purposes.
-    #[cfg(test)]
-    pub async fn only_contains(&self, extension: &InventoryExtension) {
-        let loaded_extensions = self.list_extensions().await.unwrap();
-        assert_eq!(loaded_extensions.len(), 1);
-
-        self.contains(extension).await;
     }
 }
