@@ -11,54 +11,6 @@ use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode, Writ
 use database::Database;
 use extensions::ExtensionManager;
 
-pub struct Context {
-    override_mode: Option<Override>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Override {
-    Load,
-    Handle,
-}
-
-impl Context {
-    fn new(auto_reload: bool, auto_handle: bool) -> Self {
-        Self {
-            override_mode: match (auto_reload, auto_handle) {
-                (false, false) => None,
-                (true, false) => Some(Override::Load),
-                (false, true) => Some(Override::Handle),
-                // * Clap should prevent this from ever happening
-                _ => panic!("Auto-reload and auto-handle are mutually exclusive."),
-            },
-        }
-    }
-
-    /// Creates a context with auto-reload enabled.
-    #[cfg(test)]
-    fn auto_reload() -> Self {
-        Self {
-            override_mode: Some(Override::Load),
-        }
-    }
-
-    /// Creates a context with auto-handle enabled.
-    #[cfg(test)]
-    fn auto_handle() -> Self {
-        Self {
-            override_mode: Some(Override::Handle),
-        }
-    }
-
-    /// Creates a context with no overrides enabled.
-    #[cfg(test)]
-    fn no_override() -> Self {
-        Self {
-            override_mode: None,
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = get_args();
@@ -66,9 +18,6 @@ async fn main() -> anyhow::Result<()> {
     let verbose = *args.get_one::<bool>("verbose").unwrap();
     let log_file = args.get_one::<std::path::PathBuf>("log file");
     let auto_reload = *args.get_one::<bool>("auto reload").unwrap();
-    let auto_handle = *args.get_one::<bool>("auto handle").unwrap();
-
-    let ctx = Context::new(auto_reload, auto_handle);
 
     start_logger(verbose, log_file).unwrap();
 
@@ -79,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     db.setup_tables().await?;
 
-    let manager = ExtensionManager::new(&ctx)?;
+    let manager = ExtensionManager::new(auto_reload)?;
     manager.load_extensions(&db).await?;
 
     stop(0);
@@ -108,20 +57,9 @@ fn get_args() -> clap::ArgMatches {
             Arg::new("auto reload")
                 .long("auto-reload")
                 .action(ArgAction::SetTrue)
-                .conflicts_with("auto handle")
                 .help(
                     "Force all extensions to be reloaded on startup, even if their version has not \
                     changed. This is useful for development and testing of extensions.",
-                ),
-        )
-        .arg(
-            Arg::new("auto handle")
-                .long("auto-handle")
-                .action(ArgAction::SetTrue)
-                .conflicts_with("auto reload")
-                .help(
-                    "Enable the server to automatically handle extension conflicts instead of \
-                    asking the user to resolve them. This could result in unexpected behavior.",
                 ),
         )
         .get_matches()

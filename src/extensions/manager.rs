@@ -4,18 +4,17 @@ use std::fs::DirEntry;
 use std::path::Path;
 use std::str::FromStr;
 
-use log::{error, info, warn};
+use log::{info, warn};
 use semver::Version;
 use serde::Deserialize;
 
-use super::conflicts::{LoadConflict, StageConflict};
+use super::conflicts::LoadConflict;
 use super::{ExtensionID, Metadata};
 use crate::database::Database;
 use crate::models::common::{
     Device, DeviceCategory, DeviceCategoryUniqueID, DeviceManufacturer, DeviceManufacturerUniqueID,
     DeviceUniqueID, UniqueID,
 };
-use crate::{stop, Context, Override};
 
 /// An extension of the database inventory system.
 #[derive(Debug, Clone)]
@@ -67,42 +66,16 @@ struct DeviceToml {
     extended_model_identifiers: Vec<String>,
 }
 
-/// The mode in which the manager should load extensions and handle conflicts.
-#[derive(Debug, PartialEq, Eq)]
-enum HandlerMode {
-    /// Manual mode requires the user to handle conflicts. All conflicts are logged and the server
-    /// is stopped so the conflicts can be resolved manually.
-    Manual,
-    /// Auto mode automatically handles conflicts. Conflicts are logged and the manager decides
-    /// whether to reload conflicting extensions based on the severity of the conflict.
-    Auto,
-    /// Force-reload mode automatically reloads conflicting extensions. Conflicts are logged and
-    /// the manager reloads conflicting extensions regardless of the severity of the conflict.
-    ForceReload,
-}
-
-impl From<&Option<Override>> for HandlerMode {
-    fn from(override_mode: &Option<Override>) -> Self {
-        match override_mode {
-            Some(mode) => match mode {
-                Override::Load => Self::ForceReload,
-                Override::Handle => Self::Auto,
-            },
-            None => Self::Manual,
-        }
-    }
-}
-
 /// Manages the parsing and loading of extensions into the database.
 pub struct ExtensionManager {
     staged_extensions: Vec<InventoryExtension>,
-    handler_mode: HandlerMode,
+    auto_reload: bool,
 }
 
 impl ExtensionManager {
     /// Loads all extensions from the default location (the extensions folder).
-    pub fn new(ctx: &Context) -> anyhow::Result<Self> {
-        let mut manager = Self::base_with_context(ctx);
+    pub fn new(auto_reload: bool) -> anyhow::Result<Self> {
+        let mut manager = Self::base_with_context(auto_reload);
         for extension_file in std::fs::read_dir("./extensions")?.flatten() {
             if Self::is_extension(&extension_file) {
                 info!(
@@ -116,55 +89,30 @@ impl ExtensionManager {
         Ok(manager)
     }
 
-    /// Creates a manager with the correct handler mode, but with no staged extensions.
-    pub(super) fn base_with_context(ctx: &Context) -> Self {
+    /// Creates a manager with no staged extensions.
+    pub fn base_with_context(auto_reload: bool) -> Self {
         Self {
             staged_extensions: Vec::new(),
-            handler_mode: HandlerMode::from(&ctx.override_mode),
+            auto_reload,
         }
     }
 
-    /// Parses a TOML file into an extensoin which can be added to the database by the manager.
+    /// Parses a TOML file into an extension which can be added to the database by the manager.
     fn parse_extension(filename: &Path) -> anyhow::Result<InventoryExtension> {
         let toml = std::fs::read_to_string(filename)?;
         let extension_toml: InventoryExtensionToml = toml::from_str(&toml)?;
         Ok(InventoryExtension::from(extension_toml))
     }
 
-    /// Stages an extension, checking whether it conflicts with other already-staged extensions.
-    pub(super) fn stage_extension(
-        &mut self,
-        extension: InventoryExtension,
-    ) -> anyhow::Result<Option<StageConflict>> {
-        if !self.already_contains(&extension) {
-            info!(
-                "Staging extension '{}'.",
-                extension.metadata.id.unnamespaced()
-            );
-            self.staged_extensions.push(extension);
-        } else {
-            // $ NOTIFICATION OR PROMPT HERE
-            error!(
-                "Extension with ID '{}' already staged, skipping.",
-                extension.metadata.id.unnamespaced()
-            );
-            return Ok(Some(StageConflict::new(&extension.metadata)));
-        }
+    /// Stages an extension.
+    pub fn stage_extension(&mut self, extension: InventoryExtension) -> anyhow::Result<()> {
+        info!(
+            "Staging extension '{}'.",
+            extension.metadata.id.unnamespaced()
+        );
+        self.staged_extensions.push(extension);
 
-        Ok(None)
-    }
-
-    /// Checks whether a given extension shares an ID with any of the already-staged extensions.
-    fn already_contains(&self, extension: &InventoryExtension) -> bool {
-        let extension_id = &extension.metadata.id;
-        for staged_extension in &self.staged_extensions {
-            let staged_extension_id = &staged_extension.metadata.id;
-            if extension_id == staged_extension_id {
-                return true;
-            }
-        }
-
-        false
+        Ok(())
     }
 
     /// Adds all extensions from the manager into the database, handling any conflicts.
@@ -173,8 +121,7 @@ impl ExtensionManager {
 
         let mut loaded_extensions = db.list_extensions().await?;
         let mut conflicts = Vec::new();
-        let mut should_crash = false;
-        'current_extension: for staged_extension in self.staged_extensions.into_iter() {
+        for staged_extension in self.staged_extensions.into_iter() {
             let staged_extension_metadata = &staged_extension.metadata;
             let staged_extension_id = staged_extension_metadata.id.unnamespaced().to_owned();
 
@@ -183,51 +130,25 @@ impl ExtensionManager {
                 info!("Loading extension '{}'...", staged_extension_id);
                 db.load_extension(staged_extension).await?;
                 info!("Successfully loaded extension '{}'.", staged_extension_id);
-                continue 'current_extension;
+                continue;
             };
 
-            match self.handler_mode {
-                HandlerMode::Manual => {
-                    // If the conflict would generally be handled with a reload, the user will be
-                    // given an error log explaining the conflict. The server will crash after all
-                    // the conflicts have been logged, which is why this uses a flag instead of an
-                    // immediate call to [`stop`].
-                    conflict.log(false);
-                    if conflict.should_reload() {
-                        should_crash = true;
-                    }
-                }
-                HandlerMode::Auto => {
-                    conflict.log(true);
-                    if conflict.should_reload() {
-                        info!("Reloading extension '{}'...", staged_extension_id);
-                        db.reload_extension(staged_extension).await?;
-                        info!("Successfully reloaded extension '{}'.", staged_extension_id);
-                    }
-                }
-                HandlerMode::ForceReload => {
-                    warn!("Force-reloading extension '{}'...", staged_extension_id);
-                    db.reload_extension(staged_extension).await?;
-                    info!("Successfully reloaded extension '{}'.", staged_extension_id);
-                }
+            if self.auto_reload {
+                warn!("Force-reloading extension '{}'...", staged_extension_id);
+                db.reload_extension(staged_extension).await?;
+                info!("Successfully reloaded extension '{}'.", staged_extension_id);
+            } else if conflict.should_reload() {
+                info!("Reloading extension '{}'...", staged_extension_id);
+                db.reload_extension(staged_extension).await?;
+                info!("Successfully reloaded extension '{}'.", staged_extension_id);
+            } else {
+                info!(
+                    "Skipping extension '{}' because its version has not changed.",
+                    staged_extension_id
+                );
             }
 
             conflicts.push(conflict);
-        }
-
-        match should_crash {
-            true => {
-                error!("Please resolve extension conflicts before restarting server.");
-
-                // * If this function is being run from a unit test, it needs to panic rather than
-                // * exit because a standard exit is not testable.
-                if cfg!(test) {
-                    panic!();
-                }
-
-                stop(5);
-            }
-            false => info!("All staged extensions successfully loaded."),
         }
 
         Ok(conflicts)
